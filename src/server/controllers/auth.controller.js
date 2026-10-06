@@ -15,6 +15,25 @@ const otpService = require('../services/otp.service');
 const loginGuard = require('../services/loginGuard.service');
 const { HUMAN_FILL_MS } = require('../validators/auth.validator');
 
+/**
+ * Describe how a verification code left the building, truthfully.
+ *
+ * There are three genuinely different outcomes and the user needs to be able to
+ * tell them apart, because the recovery step is different for each:
+ *   - a provider accepted it        -> it is in the inbox
+ *   - no provider, code echoed back -> it is on screen (development)
+ *   - no provider, nothing echoed   -> nothing was delivered; an operator must
+ *                                      configure RESEND_API_KEY or SMTP_*
+ * The previous wording asserted an email had been sent in all three cases.
+ */
+function otpDeliveryMessage(delivery) {
+  if (delivery.delivered) return 'We emailed you a 6-digit verification code.';
+  if (delivery.devCode) {
+    return 'Email delivery is not configured, so the 6-digit code is shown below instead of being sent.';
+  }
+  return 'This deployment cannot send email yet, so no code could be delivered. Ask the administrator to configure RESEND_API_KEY or SMTP_*.';
+}
+
 /** Shape the safe public user object returned by auth endpoints. */
 function safeUser(user) {
   return {
@@ -96,12 +115,15 @@ async function register(req, res) {
     success: true,
     otpRequired: true,
     email: user.email,
-    message: delivery.delivered
-      ? 'We emailed you a 6-digit verification code.'
-      : 'We sent a 6-digit verification code to your email address.',
-    // Whether a real provider accepted the message. When false the client can
-    // tell the user where the code actually went instead of "check your inbox".
+    // This message must never claim an email was sent when none was. Saying
+    // "we sent a code to your email" with no transport configured told the user
+    // to go and check an inbox that could never receive anything, which is
+    // indistinguishable from a broken signup.
+    message: otpDeliveryMessage(delivery),
+    // Whether a real provider accepted the message, and which one. When false
+    // the client can say where the code actually went instead of "check your inbox".
     delivered: delivery.delivered,
+    transport: delivery.transport,
     // Populated only by the development/test transport — never in production.
     devOtp: delivery.devCode || undefined,
   });
@@ -146,10 +168,9 @@ async function resendEmailOtp(req, res) {
   const delivery = await otpService.issueOtp(user);
   return res.json({
     success: true,
-    message: delivery.delivered
-      ? 'A new verification code has been emailed to you.'
-      : 'A new verification code has been sent.',
+    message: otpDeliveryMessage(delivery),
     delivered: delivery.delivered,
+    transport: delivery.transport,
     devOtp: delivery.devCode || undefined,
   });
 }

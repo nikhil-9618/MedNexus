@@ -45,8 +45,11 @@ async function deliver({ email, code, name }) {
   if (emailService.isConfigured()) {
     const sent = await emailService.sendOtpEmail({ to: email, name, code });
     if (sent.delivered) {
-      console.log(`[otp] verification code emailed to ${email} — expires in 10 minutes`);
-      return { delivered: true, transport: 'resend', devCode: expose ? code : null };
+      console.log(`[otp] verification code emailed to ${email} via ${sent.transport} — expires in 10 minutes`);
+      // Report the transport that actually carried the message. Hardcoding this
+      // to 'resend' made the audit trail claim an SMTP delivery came from
+      // Resend, which is exactly the detail needed when a code does not arrive.
+      return { delivered: true, transport: sent.transport, devCode: expose ? code : null };
     }
     // Provider configured but the send failed: fall through to the console so
     // the flow stays recoverable (and the failure is already logged).

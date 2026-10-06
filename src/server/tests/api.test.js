@@ -105,6 +105,14 @@ describe('authentication', () => {
     assert.ok(reg.body.devOtp, 'test transport should surface the code');
     // No provider is configured in tests, so the client is told plainly.
     assert.equal(reg.body.delivered, false, 'registration must report whether mail was delivered');
+    // ...and the wording must not claim an email was sent. Telling someone to
+    // check an inbox that can never receive anything is indistinguishable from
+    // a broken signup, which is exactly how this was reported.
+    assert.match(reg.body.message, /not configured/i, 'the response must say why no code arrived');
+    assert.ok(
+      !/\bwe (sent|emailed|have sent)\b/i.test(reg.body.message),
+      'the response must not claim a code was emailed when no transport is configured'
+    );
 
     // Login is refused until the emailed code is confirmed.
     const blocked = await api('POST', '/api/auth/login', {

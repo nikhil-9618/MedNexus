@@ -78,7 +78,21 @@ async function seedIfEmpty() {
 function reportEmailTransport() {
   const emailService = require('./services/email.service');
   const transport = emailService.activeTransport();
-  if (transport === 'none') return; // validateProductionConfig already warned
+  if (transport === 'none') {
+    // Production has already warned loudly in validateProductionConfig(). In
+    // development nothing used to be printed at all, which left "no code ever
+    // arrives" with no explanation anywhere in the startup output.
+    console.warn(
+      '[email] NO TRANSPORT CONFIGURED (RESEND_API_KEY and SMTP_* are empty) — ' +
+        'verification codes will not be emailed. ' +
+        (config.otpEcho
+          ? 'OTP_DEV_ECHO is on, so codes are returned to the client instead.'
+          : config.isDev
+            ? 'In development the code is printed below and returned to the client.'
+            : 'Registration will report that no code could be delivered.')
+    );
+    return;
+  }
   emailService.verifyTransport().then((result) => {
     if (result.ok) {
       console.log(`[email] verification codes will be sent via ${result.transport} (${result.reason})`);

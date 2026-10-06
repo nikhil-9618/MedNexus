@@ -33,6 +33,11 @@ export default function RegisterPage() {
   // Whether a real email was accepted for this code: true / false / null when
   // unknown (the user came here from the login page).
   const [delivered, setDelivered] = useState(null);
+  // Which transport carried (or would have carried) the code: 'resend' | 'smtp'
+  // | 'dev-console' | 'demo-console' | 'none'. Needed to distinguish "no email
+  // went out, but here is the code" from "no email went out and there is no code
+  // to show", which is a dead end the user must be told about.
+  const [transport, setTransport] = useState('');
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -75,6 +80,7 @@ export default function RegisterPage() {
         setPendingEmail(res.email || form.email.trim().toLowerCase());
         setDevOtp(res.devOtp || '');
         setDelivered(Boolean(res.delivered));
+        setTransport(res.transport || '');
         setStep('otp');
         toast.success(
           res.delivered
@@ -119,6 +125,7 @@ export default function RegisterPage() {
       const res = await resendOtp(pendingEmail);
       if (res && res.devOtp) setDevOtp(res.devOtp);
       if (res && typeof res.delivered === 'boolean') setDelivered(res.delivered);
+      if (res && res.transport) setTransport(res.transport);
       toast.success(res?.message || 'A new code has been sent.');
     } catch (err) {
       toast.error(apiError(err));
@@ -137,7 +144,7 @@ export default function RegisterPage() {
             ? 'We emailed a 6-digit code to'
             : 'Enter the 6-digit verification code for'}{' '}
           <span className="font-semibold text-slate-700">{pendingEmail}</span>
-          {delivered === true ? '. ' : ' below to activate your account. '}
+          {delivered === true ? '. ' : ' below. '}
           This step is required once, before you can sign in.
         </p>
 
@@ -165,9 +172,33 @@ export default function RegisterPage() {
 
         {devOtp && (
           <div className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800 ring-1 ring-amber-200">
-            <span className="font-bold">Development mode:</span> this code is exposed because the
-            server is not delivering mail — it is shown here and written to the server log —{' '}
+            <span className="font-bold">No email was sent.</span> No mail provider is configured on
+            this server, so the code is shown here and written to the server log instead:{' '}
             <span className="font-mono font-bold">{devOtp}</span>
+            {transport === 'demo-console' && (
+              <span className="mt-1 block">
+                This deployment is running in production mode, so codes are only written to the
+                server log. Set RESEND_API_KEY or SMTP_* before showing it to anyone.
+              </span>
+            )}
+          </div>
+        )}
+
+        {delivered === null && !devOtp && (
+          <div className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600 ring-1 ring-slate-200">
+            Arriving here from sign-in? The code was sent when the account was created and is valid
+            for 10 minutes. If you no longer have it, choose{' '}
+            <span className="font-semibold">Resend code</span> below.
+          </div>
+        )}
+
+        {delivered === false && !devOtp && (
+          <div className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-800 ring-1 ring-rose-200">
+            <span className="font-bold">No verification code could be delivered.</span> This
+            deployment has no email provider configured, so there is nothing to check your inbox
+            for. Ask the administrator to set RESEND_API_KEY (or SMTP_HOST, SMTP_USER and
+            SMTP_PASS) on the API and restart it, then use <span className="font-semibold">Resend
+            code</span> below.
           </div>
         )}
 
@@ -181,7 +212,7 @@ export default function RegisterPage() {
             </button>
           <button
             type="button"
-            onClick={() => { setStep('form'); setOtp(''); setErrors({}); setDevOtp(''); setDelivered(null); }}
+            onClick={() => { setStep('form'); setOtp(''); setErrors({}); setDevOtp(''); setDelivered(null); setTransport(''); }}
             className="text-slate-500 hover:underline"
           >
             Use a different email
