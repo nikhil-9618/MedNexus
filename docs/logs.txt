@@ -946,3 +946,58 @@ Actions Taken:
 * Parsed deployment/render.yaml with js-yaml and asserted every environment variable is well formed
 * Rewrote the deployment record around Netlify, and corrected its stale post-deploy checklist
   (it still asked the operator to confirm that the removed demo logins worked)
+================================================================================
+[2026-10-06T13:53:51+05:30] OTP verification could not be completed: delivery was claimed, never attempted
+================================================================================
+User Prompt (verbatim):
+in sign in we cant verify the real otp login fix it and give me everything running correctly
+Agent Response:
+Reproduced it exactly, and the cause is not the OTP logic - it is that the API lied about
+delivery. With RESEND_API_KEY and every SMTP_* value empty, POST /api/auth/register answered
+201 with "We sent a 6-digit verification code to your email address". Nothing was sent, there
+is no provider to send it, and the user was told to go and check an inbox that could never
+receive anything. That is indistinguishable from a broken signup, which is how it was
+reported. Three things were wrong and all three are fixed. (1) The response now reports the
+three genuinely different outcomes separately - a provider accepted the code, no provider but
+the code is echoed on screen, or nothing was delivered at all - via a shared
+otpDeliveryMessage() helper, and adds a `transport` field. (2) otp.service.js hardcoded
+transport: 'resend' on success, so an SMTP delivery was audited as coming from Resend, which
+is the one detail you need when a code does not arrive; it now reports what actually carried
+it. (3) server.js returned early from reportEmailTransport() when no transport was configured,
+deferring to a warning that only fires in production - so in development there was silence at
+boot right up until the code never arrived. It now prints NO TRANSPORT CONFIGURED in every
+environment. The client verification step was rewritten to match: it distinguishes "we emailed
+you" from "no email was sent, here is the code" from "nothing could be delivered", names the
+transport when it is only a server log, and no longer presents a code form that cannot
+succeed. The regression is locked down in tests/api.test.js, which now asserts the message
+explains itself and never matches "we sent/emailed". Verified in the real browser on the
+running dev server: registration accepted, the OTP step rendered the honest panel with the
+code, verification succeeded, and the patient portal opened as the new account. The one thing
+that still cannot be done from here is reaching a real inbox: with no provider credential,
+codes go to the server log and the screen. That needs the team's SMTP or Resend credential.
+Agent Response Summary:
+Found that the reported failure was a truthfulness bug, not an OTP bug: registration claimed an
+email had been sent when no provider was configured at all, so no code could ever arrive. Fixed
+the response contract, the transport mislabelling, the silently-suppressed startup warning and
+the verification screen, then proved the corrected journey end to end in the browser. Real
+inbox delivery still needs a provider credential, which is the team's to supply.
+Commit SHA:
+87e4da4 (the fixes; the log entry is its own documentation commit)
+Files Modified / Created:
+* src/server/controllers/auth.controller.js (Modified)
+* src/server/services/otp.service.js (Modified)
+* src/server/server.js (Modified)
+* src/server/tests/api.test.js (Modified)
+* src/client/src/pages/auth/RegisterPage.jsx (Modified)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Reproduced the live failure against the running API: 201 with "We sent a 6-digit verification
+  code to your email address" and delivered:false, with RESEND_API_KEY and SMTP_* all empty
+* Added otpDeliveryMessage() so the three delivery outcomes are reported distinctly
+* Corrected the hardcoded 'resend' transport label in the audit detail
+* Made the no-transport startup warning fire in development too, not only production
+* Rewrote the verification step's three states and removed the cannot-succeed code form
+* Added an assertion that the response never claims an email was sent with no provider
+* Ran npm test (33/33, TEST_EXIT=0) and the client build (BUILD_EXIT=0)
+* Restarted the dev stack so the running app serves the fixed code, and confirmed both ports
+* Walked the real UI: register -> honest OTP panel -> verify -> patient portal as "Ravi Kumar"
