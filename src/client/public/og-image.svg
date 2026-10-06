@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="MedNexus — the intelligent operating layer for modern hospitals">
+  <defs>
+    <linearGradient id="ogBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#071A33"/>
+      <stop offset="60%" stop-color="#0A2A45"/>
+      <stop offset="100%" stop-color="#087F8C"/>
+    </linearGradient>
+    <linearGradient id="heartGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B3350"/>
+      <stop offset="55%" stop-color="#087F8C"/>
+      <stop offset="100%" stop-color="#22C7C9"/>
+    </linearGradient>
+    <linearGradient id="networkGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22C7C9"/>
+      <stop offset="100%" stop-color="#6FF7F2"/>
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22C7C9"/>
+      <stop offset="100%" stop-color="#6FF7F2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#ogBg)"/>
+  <circle cx="1010" cy="90" r="220" fill="#22C7C9" opacity="0.08"/>
+  <circle cx="150" cy="580" r="200" fill="#22C7C9" opacity="0.06"/>
+
+  <!-- heart mark -->
+  <g transform="translate(60, 205)">
+    <circle cx="138" cy="107" r="84" fill="#22C7C9" opacity="0.12"/>
+    <g stroke="url(#networkGradient)" stroke-width="2" stroke-linecap="round" opacity="0.75">
+      <line x1="52" y1="62" x2="88" y2="78"/>
+      <line x1="226" y1="48" x2="192" y2="66"/>
+      <line x1="232" y1="144" x2="196" y2="130"/>
+      <line x1="46" y1="156" x2="86" y2="142"/>
+      <line x1="138" y1="30" x2="138" y2="52"/>
+    </g>
+    <path d="M138 76 C129 47 90 43 74 64 C56 87 76 123 138 167 C200 123 220 87 202 64 C186 43 147 47 138 76 Z" fill="url(#heartGradient)"/>
+    <path d="M88 120 H110 L118 109 L126 133 L137 96 L146 142 L155 120 H190"
+          fill="none" stroke="url(#networkGradient)" stroke-width="3.4"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="url(#networkGradient)">
+      <circle cx="52" cy="62" r="4.5"/>
+      <circle cx="226" cy="48" r="4"/>
+      <circle cx="232" cy="144" r="4.5"/>
+      <circle cx="46" cy="156" r="4"/>
+      <circle cx="138" cy="30" r="4"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <g transform="translate(415, 195) scale(1.05)">
+    <text x="0" y="116" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="700" letter-spacing="-3.5" fill="#FFFFFF">Med</text>
+    <text x="172" y="116" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="700" letter-spacing="-3.5" fill="url(#textGradient)">Nexus</text>
+    <text x="4" y="158" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="600" letter-spacing="4.4" fill="#93A8BE">CONNECTED HEALTHCARE INTELLIGENCE</text>
+  </g>
+
+  <!-- headline -->
+  <text x="420" y="405" font-family="Inter, Arial, Helvetica, sans-serif" font-size="33" font-weight="700" letter-spacing="-0.9" fill="#FFFFFF">
+    The intelligent operating layer
+  </text>
+  <text x="420" y="447" font-family="Inter, Arial, Helvetica, sans-serif" font-size="33" font-weight="700" letter-spacing="-0.9" fill="#6FF7F2">
+    for modern hospitals.
+  </text>
+
+  <text x="62" y="592" font-family="Inter, Arial, Helvetica, sans-serif" font-size="17" font-weight="500" fill="#93A8BE">
+    Appointments · Queues · Consultations · Prescriptions · Laboratory · Medical history
+  </text>
+</svg>

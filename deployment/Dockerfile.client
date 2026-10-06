@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# MedNexus Web — production image (Vite build -> nginx)
+#
+# Build from the REPOSITORY ROOT:
+#   docker build -f deployment/Dockerfile.client -t mednexus-web .
+#
+# nginx serves the static bundle, falls back to index.html for client routes
+# (React Router), and reverse-proxies /api/* to the API service so the browser
+# keeps talking to a single origin — no CORS, no baked-in API hostname.
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY src/client/package.json ./src/client/package.json
+COPY src/server/package.json ./src/server/package.json
+
+RUN npm ci --workspace mednexus-client --include-workspace-root && npm cache clean --force
+
+COPY src/client ./src/client
+
+# Optional analytics: pass --build-arg VITE_ANALYTICS_DOMAIN=… to enable.
+ARG VITE_ANALYTICS_DOMAIN=""
+ENV VITE_ANALYTICS_DOMAIN=$VITE_ANALYTICS_DOMAIN
+
+# Optional explicit API origin. Left empty => relative "/api" + nginx proxy.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
+
+RUN npm run build --workspace mednexus-client
+
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS runtime
+
+COPY deployment/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/src/client/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

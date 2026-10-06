@@ -1,0 +1,30 @@
+{
+  "name": "mednexus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MedNexus — Secure Clinic & Appointment Management (PS-04 HealthTech). Synthetic/demo data only.",
+  "license": "MIT",
+  "privateWorkspaces": true,
+  "workspaces": [
+    "src/client",
+    "src/server"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "setup": "npm install --workspaces --include-workspace-root",
+    "seed": "npm run seed --workspace mednexus-server",
+    "server": "npm run dev --workspace mednexus-server",
+    "client": "npm run dev --workspace mednexus-client",
+    "dev": "concurrently -n api,web -c blue,cyan \"npm run dev --workspace mednexus-server\" \"npm run dev --workspace mednexus-client\"",
+    "build": "npm run build --workspace mednexus-client",
+    "start": "npm start --workspace mednexus-server",
+    "test:server": "npm test --workspace mednexus-server",
+    "test:client": "npm test --workspace mednexus-client",
+    "security-checklist": "npm run security-checklist --workspace mednexus-server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

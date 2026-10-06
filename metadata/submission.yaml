@@ -1,0 +1,14 @@
+# metadata/submission.yaml — Final submission details
+# Update final_commit_sha before the deadline (2026-10-06T11:00:00+05:30).
+
+submission:
+  project_name: "MedNexus — Secure Clinic & Appointment Management"
+  problem_statement: "PS-04 HealthTech"
+  repository: ""          # Team GitHub repository URL
+  final_commit_sha: ""    # Frozen commit SHA at the deadline
+  deployed_url: ""        # Live deployment URL (if any)
+  frontend: "Vercel"      # or Netlify
+  backend: "Render"       # or Railway
+  database: "MongoDB Atlas"
+  submitted_at: ""        # ISO-8601 timestamp
+  notes: "Synthetic/demo data only. JavaScript/JSX — no TypeScript."

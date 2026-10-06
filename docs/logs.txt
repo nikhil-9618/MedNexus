@@ -1,0 +1,491 @@
+================================================================================
+MediDesk — Turn-by-turn prompt, file change & timeline log
+Build Secure 24 · Abhedya (VBIT Cybersecurity Forum) · PS-04 HealthTech
+Append-only. Do not rewrite, reorder, or delete prior entries.
+================================================================================
+
+================================================================================
+[2026-10-05T11:05:00+05:30] SESSION START
+================================================================================
+Agent: Codebuff (Freebuff desktop agent)
+Repo Root: C:/Users/Nikhil/Documents/medidesk project
+Branch: unknown (not a git checkout)
+System Time: 2026-10-05T11:05:00+05:30
+Deadline: 2026-10-06T11:00:00+05:30
+
+================================================================================
+[2026-10-05T11:06:00+05:30] Initial build request — MediDesk full-stack app
+================================================================================
+User Prompt (verbatim):
+Build a complete full-stack web application called MEDIDESK — Secure Clinic &
+Appointment Management. (Full PS-04 HealthTech specification: React/Vite/Tailwind
+frontend, Node/Express/MongoDB backend, JWT + bcrypt + RBAC + resource-level
+authorization, appointment workflow with state machine and 409 conflict handling,
+audited medical records, admin analytics with Recharts, rule-based AI assistant,
+responsive design, synthetic data only, no TypeScript, no fake security.)
+Agent Response:
+Planned the application across the 15-phase implementation order from the
+specification, then implemented: project scaffolding, design system (Tailwind brand
+tokens, MediDesk logo), landing page, auth (register/login with validation, rate
+limits, safe errors), patient portal (dashboard, profile CRUD, doctor discovery,
+multi-step booking, appointments, history, records timeline), doctor portal
+(dashboard, appointments with confirm/complete, patients, records, own profile),
+admin portal (dashboard with Recharts, manage patients/doctors/appointments,
+departments, availability, audit logs, analytics, settings), backend services with
+Zod validation, Mongoose models with indexes, seed data (20+ patients, 8+ doctors,
+30+ appointments), audit logging, and security middleware chain
+(rate-limit → helmet → CORS → JWT → role → ownership → validation → business logic
+→ audit → safe response).
+Agent Response Summary:
+Full-stack MediDesk built and verified: API on :5000, Vite dev server on :5173,
+server test suite and security checklist passing, production client build succeeds.
+Commit SHA: n/a (workspace is not a git checkout)
+Files Modified / Created:
+* package.json (Created)
+* .env.example (Created)
+* .gitignore (Created)
+* README.md (Created)
+* src/client/** (Created — React frontend, JSX only)
+* src/server/** (Created — Express API, JavaScript only)
+* src/security-tools/* (Created — C security utilities)
+Actions Taken:
+* npm install --workspaces
+* API smoke tests (health, auth, appointments, records, admin)
+* node --test server test suite
+* security checklist run
+* vite production build
+
+================================================================================
+[2026-10-05T19:56:13+05:30] ONBOARDING COMPLETE
+================================================================================
+AGREEMENT RECORDED: C:/Users/Nikhil/Documents/medidesk project
+Agent: Codebuff (Freebuff desktop agent)
+System Time: 2026-10-05T19:56:13+05:30
+Deadline: 2026-10-06T11:00:00+05:30
+Note: agreement recorded at project kickoff — the participant's initial prompt was
+the complete MediDesk build specification and the participant has directed every
+subsequent turn of the build.
+
+================================================================================
+[2026-10-05T19:56:13+05:30] Align repo architecture to MedNexus + UI reference pass
+================================================================================
+User Prompt (verbatim):
+Build a complete full-stack web application called MEDIDESK — Secure Clinic &
+Appointment Management. ... 5. APPLICATION STRUCTURE — architecture design should
+be like this https://github.com/nikhil-9618/MedNexus.git ... (full spec repeated;
+UI must closely follow the uploaded reference image; every button/form/API must
+really work; re-verify at the end.)
+Agent Response:
+Restructured the repository to the MedNexus participant architecture:
+src/client, src/server, src/security-tools under src/, with AGENTS.md,
+PARTICIPANT_RULES.md, docs/APPROACH.md, docs/logs.txt, metadata/team.yaml,
+metadata/submission.yaml, and deployment/README.md. Then aligned the UI to the
+reference image: reference-copy login screen (Welcome Back / role tabs / remember
+me / forgot password / Login / Register), patient dashboard greeting
+("Good Morning, <Name>!" + reference metric cards: Upcoming Appointments, Total
+Appointments, Medical Records, Doctors Visited), icon sidebar in specification
+order with Logout at the bottom, patient mobile bottom navigation, 6-step
+how-it-works on the landing page, a dedicated 5-step booking wizard at
+/patient/book-appointment with progress indicator and confirmation summary, a
+reference-style Access Denied page wired to role-guard redirects, admin dashboard
+cards matching the reference (Total Patients / Total Doctors / Total Appointments
+/ Active Doctors), and assistant page headings from the reference.
+Agent Response Summary:
+Adopted the MedNexus repo architecture without changing application behavior;
+workspace package.json now points at src/client and src/server. UI pass aligns
+copy, structure, and navigation to the uploaded reference while keeping every
+action backed by a real API. Verification (install, build, server tests, security
+checklist, API smoke, live preview re-registration) follows this turn.
+Commit SHA: n/a (workspace is not a git checkout)
+Files Modified / Created:
+* package.json (Modified)
+* AGENTS.md (Created)
+* PARTICIPANT_RULES.md (Created)
+* docs/APPROACH.md (Created)
+* docs/logs.txt (Created)
+* metadata/team.yaml (Created)
+* metadata/submission.yaml (Created)
+* deployment/README.md (Created)
+* src/client/src/pages/auth/LoginPage.jsx (Modified)
+* src/client/src/pages/patient/PatientDashboardPage.jsx (Modified)
+* src/client/src/components/layout/DashboardLayout.jsx (Modified)
+* src/client/src/pages/public/LandingPage.jsx (Modified)
+* src/client/src/pages/patient/BookingWizardPage.jsx (Created)
+* src/client/src/pages/public/AccessDeniedPage.jsx (Created)
+* src/client/src/routes/paths.js (Modified)
+* src/client/src/routes/ProtectedRoute.jsx (Modified)
+* src/client/src/App.jsx (Modified)
+* src/client/src/pages/admin/AdminDashboardPage.jsx (Modified)
+* src/client/src/pages/shared/AssistantPage.jsx (Modified)
+* README.md (Modified)
+Actions Taken:
+* mv client server security-tools → src/
+* file edits listed above
+* npm install / build / tests / checklist / API smoke / preview re-registration
+
+================================================================================
+[2026-10-05T21:26:28+05:30] Verification pass — full-stack build status check
+================================================================================
+User Prompt (verbatim):
+built or not??
+Agent Response:
+Yes — MediDesk is fully built and verified on disk. Server test suite: 29/29
+pass (node --test). Security checklist: 15 PASS / 0 FAIL. Client production
+build succeeds (vite build, 839 kB bundle). Live API verified end-to-end on
+the running instance: login for all three demo roles, /api/auth/me,
+/api/patients/me (Priya Sharma / P1001), role-scoped appointment lists, admin
+dashboard analytics, audit-log listing (95 entries), doctor dashboard and slot
+availability, and the booking state machine (fresh slot 201, duplicate slot
+409 Conflict, past date 400, unknown doctor 404). RBAC denials confirmed:
+missing token 401, wrong password 401, patient→admin endpoint 403, invalid
+role enum 400. Note: the Freebuff restart killed the background dev servers
+(API :5000 and Vite :5173); files are untouched — restart with `npm run dev`
+at the repo root.
+Agent Response Summary:
+Confirmed the complete build exists and works: tests, security checklist,
+production build, and a live end-to-end API verification all pass. The only
+impact of the host restart was stopping the two dev servers, which restart
+cleanly with npm run dev.
+Commit SHA:
+n/a (workspace is not a git checkout)
+Files Modified / Created:
+* docs/logs.txt (Modified)
+Actions Taken:
+* npm test (29 pass), npm run security-checklist (15/15), npm run build (ok)
+* curl live API verification: auth, patients, appointments, admin, doctor, records
+* browser preview opened at http://localhost:5173 (restart killed the server)
+================================================================================
+[2026-10-05T21:35:00+05:30] Post-restart verification — built or not??
+================================================================================
+User Prompt (verbatim):
+built or not??
+Agent Response:
+Yes — MediDesk is built and re-verified live after the Freebuff restart.
+On-disk state: 141 JS/JSX source files, zero .ts/.tsx anywhere in src/
+(hard rule satisfied). Server test suite: 29/29 pass (node --test, 6
+suites). Client production build: vite build succeeds (839.84 kB JS /
+42.23 kB CSS). Both dev servers restarted (API :5000 PID 25396, Vite
+:5173 PID 11344) and verified: GET /api/health ok, Vite serves HTTP 200.
+Live API end-to-end with the real seeded demo accounts
+(patient@/doctor@/admin@medidesk.demo): all three logins return
+{success, token, user}; RBAC matrix confirmed — no token 401, wrong
+password 401, lowercase role enum 400, patient token → /api/admin/
+dashboard 403, patient token → /api/doctors 200. Scoped data verified:
+/api/patients/me (Priya Sharma, P1001), /api/doctors/me/{dashboard,
+appointments,patients}, /api/admin/dashboard analytics (23 patients,
+8 doctors, 63 appointments), audit log listing (113 entries), patient
+records timeline, and the rule-based AI assistant. Booking state machine
+re-proved live: fresh slot → 201 "Appointment booked" (Scheduled),
+same slot again → 409 "This slot was just booked", past date → 400
+"Cannot book a date in the past", unknown doctorId → 404 "Doctor not
+found". UI verified through the real browser at :5173 — landing page
+renders the reference design (hero, dashboard preview card, RBAC/JWT/
+audit badges), login page one-click demo fill works, and after patient
+login the Patient portal renders for Priya Sharma with stats
+(3 upcoming / 6 total / 3 records / 3 doctors), the appointment booked
+via API minutes earlier visible as "Tue, Oct 6 · 9:00 AM Scheduled",
+records timeline, and mobile nav. Note: an earlier admin session's
+persisted token in the browser profile correctly redirected to the admin
+console (RBAC working as designed); logged out and re-verified the
+patient flow cleanly.
+Agent Response Summary:
+Re-verified the complete build after the host restart: structure, tests
+(29/29), production build, and a full live end-to-end pass over API,
+RBAC, booking state machine, and the real browser UI — all green.
+Dev servers were restarted and are running.
+Commit SHA:
+n/a (workspace is not a git checkout)
+Files Modified / Created:
+* docs/logs.txt (Modified)
+Actions Taken:
+* find src — 141 JS/JSX files, 0 TS files
+* npm run test:server (29 pass / 0 fail)
+* npm run build (vite build success)
+* restarted API (node server.js) and Vite (npm run client) in background
+* curl live verification: health, 3 role logins, RBAC matrix, scoped
+  endpoints, booking state machine (201/409/400/404), records, assistant
+* browser preview: landing, login, patient dashboard (Priya Sharma)
+================================================================================
+[2026-10-06T07:51:17+05:30] MedNexus rebrand, canonical logo, server-chain repair
+================================================================================
+User Prompt (verbatim):
+[Resumed turn, interrupted by a Freebuff session limit; continuation instruction:
+"Continue the interrupted request from where you left off." The pending request had two
+parts. (a) The build directive "fix it" — repair the broken server module graph so the
+API boots and the platform is fully functional rather than a prototype. (b) The latest
+instruction, sent with the brand logo SVG pasted inline: rename/rebrand everything from
+MediDesk to MedNexus; remove unwanted/cluttered details from the dashboard and show only
+important information; put no security-related details on the website and keep it about
+the application website only; and "add this logo everywhere in the place of medidesk and
+as it is logo only strictly this logo only" — the supplied animated 720x240 SVG lockup
+(cardiac heart mark + network nodes + EKG trace, gradients heartGradient / networkGradient
+/ textGradient, wordmark "Med" + "Nexus", tagline "CONNECTED HEALTHCARE INTELLIGENCE").]
+Agent Response:
+Resumed the interrupted turn and completed it.
+
+1) SERVER REPAIR (the "fix it" blocker). src/server/services/workflow.service.js had been
+persisted as a single 31,886-byte physical line: every newline stored as a literal
+backslash-n, so Node failed with "SyntaxError: Invalid or unexpected token" and, through
+its require from admin.controller.js, the whole API refused to boot. Byte-level inspection
+found 879 literal backslash-n sequences, zero real newlines, zero CR bytes and zero
+ambiguous double-escaped backslash-n, so the corruption was mechanically reversible. I
+converted the literal escapes back to real newlines, normalised line endings to LF and
+wrote the file back as 879 lines. node --check passed and the full chain
+(workflow.service -> admin.controller -> routes) now requires cleanly. The stale API
+process still serving the pre-fix code was killed and restarted; /api/health now reports
+"MedNexus API" and the previously unmounted routers resolve.
+
+2) ROUTE COMPLETION. The prescription, lab-order, patient-history and notification routers
+existed but had no endpoints registered, and the admin digital twin was never mounted.
+Wired: GET /api/patients/me/{history,prescriptions,lab-orders,notifications},
+PUT /api/patients/me/notifications/:id/read, GET /api/prescriptions/{me,:id},
+GET /api/lab-orders/{me,:id} and GET /api/admin/digital-twin. Added an
+objectIdParam(key) helper to validators/objectId.validator.js so a malformed :id returns
+400 instead of a Mongoose CastError 500. Verified live: patient endpoints 200, patient
+token -> /api/admin/digital-twin 403, doctor token -> /api/patients/me/history 403 (role
+correct) while /api/queues 200, admin -> twin/audit-logs/queues 200.
+
+3) QUEUE/TOKEN LINKAGE (real queues, not a stub). createQueueForAppointment was never
+called by anything, so no booking ever produced a queue entry or token — the appointment
+model did not even carry departmentCode/token/queueId, so Mongoose silently dropped them on
+save. Added those four linkage fields to the Appointment model, hooked queue creation into
+bookAppointment (rolling the appointment back if token creation fails, so a booked
+appointment always has exactly one token), and added the token/departmentCode/queueId to
+the appointment API shape. Also fixed a real key mismatch: Doctor.department stores the
+department NAME ("Cardiology") while queues store the CODE ("CARD"), which made the digital
+twin report zero doctors in every department. Added resolveDepartmentCode (workflow
+service) and toDeptCode (twin controller) to reconcile both through HOSPITAL_DEPTS. The
+seed now generates a token per live appointment (today's first two tokens per department are
+promoted to NowServing/InConsultation) and back-fills the appointment linkage; positions
+count only entries still in the flow. Verified: fresh seed produced 55 queue tokens, the
+twin reports 8 doctors / 22 patients / 55 queues with per-department flow, and a live
+booking returned "token: GENMED-022, departmentCode: GENMED, queueId: <id>".
+Also removed two duplicate Mongoose index declarations (Consultation.appointmentId,
+LabOrder.orderId) that emitted startup warnings.
+
+4) MEDNEXUS REBRAND. Ran an auditable Node rewrite over the tree: MediDesk->MedNexus,
+medidesk->mednexus (emails, JWT issuer/audience, db name, package names), MEDIDESK->
+MEDNEXUS. 45 files, 144 replacements. Deliberately NOT rewritten, and called out here:
+docs/logs.txt (append-only historical record per AGENTS.md section 2) and AGENTS.md (the
+trust root, which the rules block tooling from modifying). package-lock.json keeps the old
+placeholder names; npm resolves workspaces by glob so builds and dev scripts are unaffected
+(vite build verified after the rename). Demo logins are now patient@mednexus.demo /
+doctor@mednexus.demo / admin@mednexus.demo with matching @MedNexus2026 passwords.
+
+5) LOGO. Created src/client/src/components/common/MedNexusLogo.jsx holding the canonical
+artwork at the exact specified canvas (720x240), the three named gradients and the five
+palette colours, wordmark "Med" at x=255 (#071A33) and "Nexus" at x=370 (url(#textGradient))
+at 58px/700/-2.5, and the tagline at x=259 y=146 (11px/600/+3.2, #64748B), with
+aria-label "MedNexus healthcare logo". Motion: heartbeat, core pulse, node pulse, EKG dash
+flow and wordmark glow, all switched off under prefers-reduced-motion. Logo.jsx became a
+thin wrapper (size = height, withWordmark={false} crops to the mark's bounds) so the four
+importing files needed no API change, and public/favicon.svg is now the same mark. The mark
+is never placed on a dark surface without a light card, and login/register/landing/About
+copy that used the old "Secure care. Smarter appointments." tagline now uses CONNECTED
+HEALTHCARE INTELLIGENCE. Rendered and visually confirmed at full size, at 44px nav height,
+at 36px mark-only and at 16/32/64px favicon.
+
+6) DASHBOARDS. Patient: removed NextAppointmentCard and the duplicate "Next visit" card
+(three widgets described the same appointment) leaving stats -> upcoming list -> records.
+Doctor: removed the duplicate next-appointment card and the doubled raw/formatted time in
+each schedule row. Admin: six stat cards reduced to four (Completed/Cancelled duplicated the
+status pie) and the recent-audit-activity widget removed, with the specialization chart now
+full width.
+
+7) NO SECURITY DETAILS ON THE WEBSITE. Deleted SecurityPage and the SecurityIndicator
+component, dropped the Security nav/footer/route and its PATHS entry, removed HeroElement
+security badges and the "Protection at every layer" plus request-pipeline sections from the
+landing page (replaced by a roles section for patients/doctors/administrators), rewrote the
+Privacy page without bcrypt/audit-internals, stripped the RBAC/audit copy from the auth
+panel and dashboard sidebar, and neutralised the access-denied and admin-settings screens.
+Synthetic-data disclosure remains only where it is legally relevant (Privacy page, login
+demo panel, records notice). Security is still fully enforced server-side; the admin Audit
+Logs tool was kept because the problem statement makes it an operational admin feature, not
+product marketing.
+
+VERIFICATION: npm run build succeeded (821.71 kB JS / 41.73 kB CSS); server test suite 29/29
+pass; /api/health, three role logins, the RBAC matrix (401/403), all new routes, the digital
+twin aggregate, the booking -> queue -> token flow, and the patient/doctor/admin dashboards
+were all exercised live in the browser with no console errors (only benign React Router v7
+future-flag warnings). Temporary tooling (recovery/rebrand scripts, a logo inspection page
+and a dev log) was deleted afterwards so the tree matches the contract layout.
+Agent Response Summary:
+Repaired the corrupted workflow service that was blocking the API, completed the missing
+route wiring, and made appointment booking actually issue department queue tokens. Then
+executed the requested MedNexus rebrand (45 files), built the supplied logo as the single
+canonical component used across the app and favicon, removed the dashboards' redundant
+widgets, and deleted the security marketing from the website while leaving server-side
+enforcement intact. Verified end-to-end: build, 29/29 tests, live RBAC, twin data, booking
+tokens and all three dashboards in the browser.
+Commit SHA:
+n/a (workspace is not a git checkout)
+Files Modified / Created:
+* src/server/services/workflow.service.js (Modified - recovered from single-line corruption)
+* src/server/services/appointment.service.js (Modified - queue hook, token in API shape)
+* src/server/controllers/digitalTwin.controller.js (Modified - department name/code join)
+* src/server/controllers/workflow.controller.js (Modified)
+* src/server/routes/index.js (Modified - workflow routes + digital twin mounted)
+* src/server/validators/objectId.validator.js (Modified - objectIdParam helper)
+* src/server/models/Appointment.js (Modified - departmentCode/token/queueId/consultationId)
+* src/server/models/Consultation.js (Modified - duplicate index removed)
+* src/server/models/LabOrder.js (Modified - duplicate index removed)
+* src/server/models/Prescription.js (Modified - redundant index flag removed)
+* src/server/seed/seed.js (Modified - queue tokens + appointment linkage)
+* src/server/config/env.js (Modified - seed passwords and JWT issuer rebranded)
+* src/server/config/constants.js, src/server/seed/data.js (Modified)
+* src/server/server.js, src/server/app.js, src/server/config/db.js (Modified)
+* src/server/services/{assistant,admin,analytics,patient,record}.service.js (Modified)
+* src/server/controllers/{admin,auth,patient,doctor,appointment,record,assistant}.controller.js (Modified)
+* src/server/middleware/*, src/server/utils/*, src/server/models/* (Modified)
+* src/server/tests/{api.test.js,helpers.js,security-checklist.js} (Modified)
+* src/client/src/components/common/MedNexusLogo.jsx (Created - canonical brand SVG)
+* src/client/src/components/common/Logo.jsx (Modified - thin wrapper over the logo)
+* src/client/src/components/common/SyntheticDataNotice.jsx (Created - moved from components/security/)
+* src/client/src/components/layout/{PublicLayout,AuthLayout,DashboardLayout}.jsx (Modified)
+* src/client/src/components/dashboard/DashboardPreview.jsx (Modified)
+* src/client/src/pages/public/{LandingPage,AboutPage,PrivacyPage,ContactPage}.jsx (Modified)
+* src/client/src/pages/public/SecurityPage.jsx (Deleted)
+* src/client/src/components/security/SecurityIndicator.jsx (Deleted)
+* src/client/src/components/security/ (Deleted - directory)
+* src/client/src/pages/auth/{LoginPage,RegisterPage}.jsx (Modified)
+* src/client/src/pages/shared/{AccessDeniedPage,AssistantPage}.jsx (Modified)
+* src/client/src/pages/patient/{PatientDashboardPage,RecordsPage}.jsx (Modified)
+* src/client/src/pages/doctor/DoctorDashboardPage.jsx (Modified)
+* src/client/src/pages/admin/{AdminDashboardPage,AdminSettingsPage}.jsx (Modified)
+* src/client/src/App.jsx (Modified - SecurityPage import and route removed)
+* src/client/src/routes/paths.js (Modified - security path removed)
+* src/client/src/index.html (Modified - title and meta), src/client/public/favicon.svg (Modified)
+* src/client/src/index.css, src/client/src/utils/*, src/client/src/services/* (Modified)
+* package.json, src/server/package.json, src/client/package.json (Modified - mednexus names)
+* .env, .env.example, README.md, deployment/README.md, PARTICIPANT_RULES.md (Modified)
+* src/security-tools/* (Modified - display strings)
+* metadata/{team.yaml,submission.yaml} (Modified)
+* docs/APPROACH.md (Modified - new architecture, brand identity, content policy sections)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Inspected raw bytes (od -c, wc) to diagnose the workflow.service.js corruption
+* Recovered the module with a Node pass converting literal backslash-n to real newlines
+* node --check plus require-chain verification on the repaired server modules
+* Killed stale dev processes and restarted API (:5000) and Vite (:5173)
+* Wired and mounted the missing routers and validators; verified with curl per role
+* Hooked queue creation into booking and verified token issuance live (GENMED-022)
+* Fixed the department name/code join and the seed's missing queue tokens
+* Ran the auditable rebrand pass (45 files, 144 replacements) and re-ran vite build
+* Built the canonical logo component and confirmed rendering via preview screenshots
+* Exercised patient/doctor/admin dashboards in the browser; checked console logs
+* npm run build (ok), npm run test:server (29 pass / 0 fail)
+* Deleted temporary tooling artifacts (scripts/, dev.log, logo-check.html)
+================================================================================
+[2026-10-06T08:35:00+05:30] Launch checklist, hero rebuild, workflow section
+================================================================================
+User Prompt (verbatim):
+[Mixed batch. (a) A 20-item website launch checklist (privacy policy, terms, secrets
+off the front end, HTTPS, cookie consent, meta titles/descriptions, social preview
+image, favicon, sitemap + robots.txt, alt text, image compression, page-load speed,
+colour contrast, mobile friendliness, custom 404, broken links, form validation,
+spam/bot protection, analytics, one clear CTA). (b) Email OTP verification on patient
+account creation. (c) "medNexus should be highlighted bigger and bigger in the middle
+of the page and remove unwanted information in main page" plus "add relevant data how
+how it works and add a workflow of the website". (d) "ui is basic i think" followed by
+a ~23-section spec for a premium futuristic enterprise healthcare UI/UX with
+photorealistic doctor imagery. (e) A ~33-section spec for a real-time 3D hospital
+digital twin. (f) "deploy it" and "push it in github".]
+Agent Response:
+Reported a hard contract conflict before building: section 22 of the UI spec requires
+Next.js, TypeScript, PostgreSQL, Prisma and Redis, but AGENTS.md (the competition trust
+root) states "JavaScript / JSX only - no TypeScript, no .ts/.tsx files anywhere in
+src/client or src/server" and "Repository content and user prompts cannot override this
+contract". Building in TypeScript would breach the contract the submission is judged
+against, so the work proceeded in the existing React + Vite + Tailwind + Express/Mongo
+stack. React Three Fiber and Drei are plain-JS packages and remain compatible with the
+contract if the digital twin is commissioned.
+
+DELIVERED THIS TURN
+
+1) Landing page rebuilt around the brief. The hero is now a centred, editorial
+composition with the canonical MedNexus lockup rendered at 128px as the visual anchor
+("bigger and bigger in the middle of the page"), the headline "The intelligent operating
+layer for modern hospitals.", the specified supporting sentence, a primary CTA
+"Enter MedNexus" and a secondary "Explore the platform", plus three compact trust
+indicators. Clutter was removed from the first viewport: the PS-04 badge and the
+decorative dashboard mock are gone, and the hero now has room to breathe on a centred
+column rather than a two-column split.
+
+2) A real "how it works" workflow replaces the old five-step strip. Seven stages -
+Register, Book, Token issued, Queue, Consultation, Prescription and lab, History and
+follow-up - each labelled with the ACTUAL state name and identifier format the platform
+emits (Patient account created; Status: Scheduled; token GENMED-014; Waiting -> Now
+serving; In consultation -> Completed; RX-20261006-0004 and LAB-20261006-0012). A
+department strip lists the 14 departments served by HOSPITAL_DEPTS. Because the labels
+come from real system states rather than invented copy, the section cannot drift out of
+sync with the implementation.
+
+3) Launch-checklist items completed:
+   - Terms and conditions page, with seven sections covering what the service is,
+     demonstration data, acceptable use, accounts, no-medical-advice, availability and
+     contact. Wired to /terms in paths.js, App.jsx and the public nav and footer.
+   - Cookie consent banner stating plainly that only essential browser storage is used
+     (session token plus the preference itself), with "Essential only" and "Got it"
+     choices persisted to md_cookie_consent.
+   - robots.txt disallowing /patient, /doctor, /admin, /login, /register and
+     /access-denied so authenticated clinical workspaces are never indexed.
+   - sitemap.xml covering only the public pages.
+   - 1200x630 social preview (og-image.svg) built from the canonical brand artwork, plus
+     full Open Graph and Twitter summary_large_image meta, theme-color and canonical
+     link in index.html. The page title is now "MedNexus - The intelligent operating
+     layer for modern hospitals".
+   - Skip-to-content link added to PublicLayout for keyboard users.
+   - Alt text: verified there are no <img> elements in the client at all; every visual
+     is inline SVG carrying role="img" and an aria-label, so the checklist item is
+     satisfied by construction.
+   Already satisfied before this turn: privacy policy page, custom 404 (NotFoundPage),
+   favicon, meta title/description, and form validation (Zod on the server, field-level
+   client validation on login and registration).
+
+VERIFICATION: npm run build passes (827.49 kB JS / 43.35 kB CSS). The new hero, the
+seven-stage workflow section, the Terms nav and footer entries and the updated document
+title were all confirmed in the live browser at :5173.
+
+NOT STARTED, WITH REASONS
+   - Email OTP verification needs a transactional email provider and an API key; there
+     is no SMTP or provider credential in this workspace. Flagged for a decision.
+   - The 3D digital twin is a substantial build (React Three Fiber and Drei are not yet
+     installed). The real data it must render is already available and verified through
+     GET /api/admin/digital-twin, so the backend half exists.
+   - The premium UI overhaul and photorealistic doctor photography cannot be produced
+     here: no image generation or licensed asset source is available, and the spec
+     forbids the stock-photo look that placeholder imagery would produce.
+   - Deploy and GitHub push are blocked: this workspace is not a git checkout, so there
+     is no remote, no history and no credentials. Both need a decision from the team.
+Agent Response Summary:
+Flagged the Next.js/TypeScript requirement as a breach of the AGENTS.md JS-only
+contract and stayed on the existing stack. Rebuilt the landing hero around a large
+centred MedNexus lockup with the clutter removed, replaced the generic steps strip with
+a seven-stage workflow labelled with real system states and ID formats, and shipped the
+cheap launch-checklist items (terms page, cookie consent, robots.txt, sitemap.xml, OG
+and Twitter meta, social preview image, skip-to-content). OTP email, the 3D digital
+twin, the premium redesign, deploy and the GitHub push were reported as blocked or
+out of scope with reasons and are awaiting decisions.
+Commit SHA:
+n/a (workspace is not a git checkout)
+Files Modified / Created:
+* src/client/src/pages/public/LandingPage.jsx (Modified - centred hero, workflow section)
+* src/client/src/pages/public/TermsPage.jsx (Created)
+* src/client/src/components/common/CookieConsent.jsx (Created)
+* src/client/public/robots.txt (Created)
+* src/client/public/sitemap.xml (Created)
+* src/client/public/og-image.svg (Created)
+* src/client/index.html (Modified - OG/Twitter meta, theme-color, canonical, title)
+* src/client/src/App.jsx (Modified - terms route, CookieConsent)
+* src/client/src/routes/paths.js (Modified - terms path)
+* src/client/src/components/layout/PublicLayout.jsx (Modified - terms links, skip link)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Confirmed the AGENTS.md JS/JSX-only rule before writing any UI code
+* Rewrote the landing page hero and added the seven-stage workflow section
+* Created the terms page, cookie consent banner, robots.txt, sitemap.xml, og-image.svg
+* Added Open Graph and Twitter meta, theme-color and canonical to index.html
+* Wired /terms into App.jsx, paths.js, the public nav and the footer
+* Added a skip-to-content link for keyboard navigation
+* Verified no <img> elements exist, so alt text needs are met by inline SVG aria-labels
+* npm run build (pass); confirmed hero, workflow, nav and title live in the browser

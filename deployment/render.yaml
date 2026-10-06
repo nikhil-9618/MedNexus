@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+# MedNexus — Render Blueprint (API)
+#
+# 1. Push this repository to GitHub.
+# 2. Render Dashboard -> New -> Blueprint -> pick the repo (or paste this file).
+# 3. Render prompts for every `sync: false` variable — paste the real values.
+#
+# The API is a plain Node service; no Docker required. `src/server` is an npm
+# workspace, and Render installs it standalone from that root directory.
+# ---------------------------------------------------------------------------
+services:
+  - type: web
+    name: mednexus-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: src/server
+    buildCommand: npm install --omit=dev --omit=optional
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT; the API reads it from the environment.
+      - key: MONGODB_URI
+        sync: false # mongodb+srv://user:pass@cluster.mongodb.net/mednexus
+      - key: JWT_SECRET
+        generateValue: true # Render generates a 64-char secret
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        sync: false # https://your-frontend.vercel.app (comma-separate extras)
+      # Render terminates TLS at the edge and forwards X-Forwarded-Proto.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: FORCE_HTTPS
+        value: "true"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      # Seeded demo accounts (synthetic data only) — override before first seed.
+      - key: SEED_ADMIN_PASSWORD
+        generateValue: true
+      - key: SEED_DOCTOR_PASSWORD
+        generateValue: true
+      - key: SEED_PATIENT_PASSWORD
+        generateValue: true

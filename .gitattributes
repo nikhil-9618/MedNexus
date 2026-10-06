@@ -1,0 +1,16 @@
+# Normalize line endings in the repository. Contributors on Windows keep CRLF
+# locally; everything committed and deployed (Docker, Render) is LF.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated / lock files
+package-lock.json -diff linguist-generated

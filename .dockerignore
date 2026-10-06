@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Docker build context exclusions (repository root).
+# Keeps images small and prevents local secrets/history from entering a layer.
+# ---------------------------------------------------------------------------
+node_modules
+**/node_modules
+
+.git
+.gitignore
+.freebuff
+.github
+
+# Never ship secrets or local env files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build output is produced inside the image
+src/client/dist
+dist
+build
+coverage
+
+# Docs / metadata are not needed at runtime (the API container only takes
+# src/server, the web container only takes src/client).
+docs
+metadata
+deployment/README.md
+
+*.log
+logs
+.DS_Store
+Thumbs.db

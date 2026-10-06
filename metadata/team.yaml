@@ -1,0 +1,23 @@
+# metadata/team.yaml — Build Secure 24 team information
+# Fill in with your organizer-assigned details (exactly 2 or 4 members).
+
+team:
+  id: ""            # Organizer-assigned Team ID
+  name: "MedNexus"  # Team name
+  size: 2           # Exactly 2 or 4
+  repository: ""    # Your team's GitHub repository URL
+
+members:
+  - name: ""        # Member 1 full name
+    email: ""
+    role: "participant"
+  - name: ""        # Member 2 full name
+    email: ""
+    role: "participant"
+  # If team size is 4, add:
+  # - name: ""
+  #   email: ""
+  #   role: "participant"
+  # - name: ""
+  #   email: ""
+  #   role: "participant"

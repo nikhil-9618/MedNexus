@@ -1,0 +1,75 @@
+# ---------------------------------------------------------------------------
+# MedNexus — one-command deployment (run from the repository root)
+#
+#   cp deployment/.env.production.example deployment/.env
+#   # edit deployment/.env -> set a long random JWT_SECRET
+#   docker compose -f deployment/docker-compose.yml --env-file deployment/.env up -d --build
+#
+#   Web  -> http://localhost:8080
+#   API  -> http://localhost:8080/api/health  (proxied)  /  :5000 direct
+#
+# All patient data in this stack is synthetic demo data.
+# ---------------------------------------------------------------------------
+name: mednexus
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-mednexus}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    # Not published by default — only the API needs to reach it.
+    expose:
+      - "27017"
+
+  api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      MONGODB_URI: mongodb://mongo:27017/${MONGODB_DB:-mednexus}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deployment/.env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Browser origin(s) allowed by CORS — the web container's public address.
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080}
+      TRUST_PROXY: "1"
+      FORCE_HTTPS: ${FORCE_HTTPS:-false}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      # Seeded demo credentials (synthetic data only).
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@MedNexus2026}
+      SEED_DOCTOR_PASSWORD: ${SEED_DOCTOR_PASSWORD:-Doctor@MedNexus2026}
+      SEED_PATIENT_PASSWORD: ${SEED_PATIENT_PASSWORD:-Patient@MedNexus2026}
+    # Seeding: the API seeds automatically on first boot only when the database
+    # is empty and NODE_ENV is development. In production run it explicitly:
+    #   docker compose -f deployment/docker-compose.yml exec api node src/server/seed/seed.js
+    ports:
+      - "${API_PORT:-5000}:5000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.client
+      args:
+        VITE_ANALYTICS_DOMAIN: ${VITE_ANALYTICS_DOMAIN:-}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  mongo-data:

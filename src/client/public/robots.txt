@@ -1,0 +1,19 @@
+# MedNexus — robots.txt
+# Public marketing pages may be indexed. Signed-in workspaces must not be.
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /terms
+Allow: /privacy
+Allow: /contact
+
+# Never index authenticated clinical workspaces
+Disallow: /patient
+Disallow: /doctor
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /access-denied
+
+Sitemap: /sitemap.xml

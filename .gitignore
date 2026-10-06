@@ -1,0 +1,41 @@
+# ---------- Dependencies ----------
+node_modules/
+**/node_modules/
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# ---------- Logs ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# ---------- Builds ----------
+client/dist/
+client/dist-ssr/
+dist/
+build/
+coverage/
+
+# ---------- Local database ----------
+**/*.mongodb
+db-data/
+
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---------- Misc ----------
+*.local
+
+# ---------- Local tooling state (freebuff preview runner) ----------
+.freebuff/
