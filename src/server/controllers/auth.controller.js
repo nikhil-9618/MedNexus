@@ -42,11 +42,12 @@ async function register(req, res) {
   const filledTooFast = fillMs >= 0 && fillMs < HUMAN_FILL_MS;
 
   if (trippedHoneypot || filledTooFast) {
+    // role/result values must exist in the AuditLog enums (SYSTEM, DENIED).
     auditAsync({
       action: 'REGISTER',
-      role: 'GUEST',
+      role: 'SYSTEM',
       resourceType: 'AUTH',
-      result: 'BLOCKED',
+      result: 'DENIED',
       ipAddress: req.ip,
       detail: trippedHoneypot ? 'Honeypot field was filled' : 'Form submitted faster than a human could type',
     });

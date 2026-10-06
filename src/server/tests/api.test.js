@@ -142,6 +142,52 @@ describe('authentication', () => {
     assert.equal(res.status, 400);
   });
 
+  test('registration bot traps reject scripted signups (honeypot + fill time)', async () => {
+    const fields = {
+      name: 'Bot Filter',
+      email: 'bot.trap@example.demo',
+      password: 'Str0ngPass!9',
+      confirmPassword: 'Str0ngPass!9',
+      phone: '+1-555-1234',
+      dob: '1990-01-01',
+      gender: 'Male',
+    };
+
+    // 1. A hidden field that no human can reach or see.
+    const honeypot = await api('POST', '/api/auth/register', {
+      body: { ...fields, website: 'http://spam.example' },
+    });
+    assert.equal(honeypot.status, 400);
+    assert.equal(honeypot.body.message, 'We could not process this registration. Please try again.');
+    assert.equal(honeypot.body.devOtp, undefined, 'no OTP may ever be issued to a trapped submission');
+
+    // 2. Submitted the instant the form rendered.
+    const instant = await api('POST', '/api/auth/register', {
+      body: { ...fields, email: 'bot.fast@example.demo', formStartedAt: Date.now() },
+    });
+    assert.equal(instant.status, 400);
+    assert.equal(instant.body.devOtp, undefined);
+
+    // 3. Nothing was written for either attempt: the address is still free and
+    //    a plausible human payload still works.
+    const human = await api('POST', '/api/auth/register', { body: fields });
+    assert.equal(human.status, 201, `trapped submissions must not create accounts: ${human.text}`);
+    assert.equal(human.body.otpRequired, true);
+
+    // 4. Both rejections are still auditable by an administrator.
+    const admin = await registerAndLogin(
+      'admin@mednexus.demo',
+      process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026',
+      'ADMIN'
+    );
+    const denied = await api('GET', '/api/admin/audit-logs?action=REGISTER&result=DENIED', { token: admin });
+    assert.equal(denied.status, 200);
+    assert.ok(denied.body.total >= 2, 'blocked registrations must leave an audit trail');
+    const details = denied.body.items.map((r) => r.detail).join(' | ');
+    assert.match(details, /Honeypot field was filled/);
+    assert.match(details, /faster than a human/);
+  });
+
   test('valid login works and role matches', async () => {
     const token = await registerAndLogin('login.test@example.demo', 'Str0ngPass!2', 'PATIENT');
     assert.ok(token.split('.').length === 3);

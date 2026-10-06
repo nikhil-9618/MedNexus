@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Menu, X, LogOut,
@@ -7,6 +7,7 @@ import {
   CalendarClock, ScrollText, Settings, FileText, Home, Boxes,
 } from 'lucide-react';
 import Logo from '../common/Logo.jsx';
+import { Loader } from '../common/Loader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { PATHS } from '../../routes/paths.js';
 
@@ -155,7 +156,11 @@ export default function DashboardLayout({ title }) {
 
         {/* Content */}
         <main className={`min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 ${user?.role === 'PATIENT' ? 'pb-24 lg:pb-8' : ''}`}>
-          <Outlet />
+          {/* Route-level code splitting: the sidebar, topbar and identity stay
+              on screen while a workspace chunk loads on first visit. */}
+          <Suspense fallback={<Loader fullScreen label="Loading workspace…" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

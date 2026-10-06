@@ -7,8 +7,8 @@ import { RequireAuth, RequireRole } from './routes/ProtectedRoute.jsx';
 import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import CookieConsent from './components/common/CookieConsent.jsx';
 
-// The 3D digital twin pulls in three.js + drei (~870 kB). It is admin-only, so
-// it is loaded on demand instead of shipping in the initial bundle.
+// The 3D digital twin pulls in three.js + drei (~860 kB) on top of the admin
+// workspace. It loads only when an administrator opens it.
 const AdminDigitalTwinPage = lazy(() => import('./pages/admin/AdminDigitalTwinPage.jsx'));
 
 import LandingPage from './pages/public/LandingPage.jsx';
@@ -21,36 +21,44 @@ import NotFoundPage from './pages/public/NotFoundPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 
-import PatientDashboardPage from './pages/patient/PatientDashboardPage.jsx';
-import FindDoctorsPage from './pages/patient/FindDoctorsPage.jsx';
-import DoctorProfilePage from './pages/patient/DoctorProfilePage.jsx';
-import BookAppointmentPage from './pages/patient/BookAppointmentPage.jsx';
-import AppointmentsPage from './pages/patient/AppointmentsPage.jsx';
-import AppointmentHistoryPage from './pages/patient/AppointmentHistoryPage.jsx';
-import RecordsPage from './pages/patient/RecordsPage.jsx';
-import PatientProfilePage from './pages/patient/PatientProfilePage.jsx';
-
-import DoctorDashboardPage from './pages/doctor/DoctorDashboardPage.jsx';
-import DoctorAppointmentsPage from './pages/doctor/DoctorAppointmentsPage.jsx';
-import DoctorPatientsPage from './pages/doctor/DoctorPatientsPage.jsx';
-import DoctorPatientDetailPage from './pages/doctor/DoctorPatientDetailPage.jsx';
-import DoctorRecordsPage from './pages/doctor/DoctorRecordsPage.jsx';
-import DoctorHistoryPage from './pages/doctor/DoctorHistoryPage.jsx';
-import DoctorOwnProfilePage from './pages/doctor/DoctorOwnProfilePage.jsx';
-
-import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx';
-import AdminPatientsPage from './pages/admin/AdminPatientsPage.jsx';
-import AdminDoctorsPage from './pages/admin/AdminDoctorsPage.jsx';
-import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage.jsx';
-import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage.jsx';
-import AdminAvailabilityPage from './pages/admin/AdminAvailabilityPage.jsx';
-import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage.jsx';
-import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx';
-
-import AssistantPage from './pages/shared/AssistantPage.jsx';
 import AccessDeniedPage from './pages/shared/AccessDeniedPage.jsx';
-import BookingWizardPage from './pages/patient/BookingWizardPage.jsx';
 import { PATHS } from './routes/paths.js';
+
+// ---- Signed-in pages load on demand --------------------------------------
+// A visitor on the public site should not download dashboard code, the chart
+// library or the 3D twin. Each workspace below becomes its own chunk, fetched
+// the first time that route is opened (the shell stays mounted while a chunk
+// loads — see the Suspense boundary in DashboardLayout).
+const PatientDashboardPage = lazy(() => import('./pages/patient/PatientDashboardPage.jsx'));
+const FindDoctorsPage = lazy(() => import('./pages/patient/FindDoctorsPage.jsx'));
+const DoctorProfilePage = lazy(() => import('./pages/patient/DoctorProfilePage.jsx'));
+const BookAppointmentPage = lazy(() => import('./pages/patient/BookAppointmentPage.jsx'));
+// NOTE: pages/patient/BookingWizardPage.jsx exists but is not routed, so it is
+// intentionally not imported here — an unused lazy import would still ship a
+// chunk nothing can reach.
+const AppointmentsPage = lazy(() => import('./pages/patient/AppointmentsPage.jsx'));
+const AppointmentHistoryPage = lazy(() => import('./pages/patient/AppointmentHistoryPage.jsx'));
+const RecordsPage = lazy(() => import('./pages/patient/RecordsPage.jsx'));
+const PatientProfilePage = lazy(() => import('./pages/patient/PatientProfilePage.jsx'));
+
+const DoctorDashboardPage = lazy(() => import('./pages/doctor/DoctorDashboardPage.jsx'));
+const DoctorAppointmentsPage = lazy(() => import('./pages/doctor/DoctorAppointmentsPage.jsx'));
+const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage.jsx'));
+const DoctorPatientDetailPage = lazy(() => import('./pages/doctor/DoctorPatientDetailPage.jsx'));
+const DoctorRecordsPage = lazy(() => import('./pages/doctor/DoctorRecordsPage.jsx'));
+const DoctorHistoryPage = lazy(() => import('./pages/doctor/DoctorHistoryPage.jsx'));
+const DoctorOwnProfilePage = lazy(() => import('./pages/doctor/DoctorOwnProfilePage.jsx'));
+
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage.jsx'));
+const AdminPatientsPage = lazy(() => import('./pages/admin/AdminPatientsPage.jsx'));
+const AdminDoctorsPage = lazy(() => import('./pages/admin/AdminDoctorsPage.jsx'));
+const AdminAppointmentsPage = lazy(() => import('./pages/admin/AdminAppointmentsPage.jsx'));
+const AdminDepartmentsPage = lazy(() => import('./pages/admin/AdminDepartmentsPage.jsx'));
+const AdminAvailabilityPage = lazy(() => import('./pages/admin/AdminAvailabilityPage.jsx'));
+const AdminAuditLogsPage = lazy(() => import('./pages/admin/AdminAuditLogsPage.jsx'));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage.jsx'));
+
+const AssistantPage = lazy(() => import('./pages/shared/AssistantPage.jsx'));
 
 export default function App() {
   return (

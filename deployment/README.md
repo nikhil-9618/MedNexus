@@ -1,56 +1,171 @@
-# deployment/README.md — MedNexus Deployment Record
+# MedNexus — Deployment Record
 
-## Stack
+Three ways to run MedNexus in production shape. All of them load the same
+build; none of them puts a secret in the browser bundle.
 
-| Layer | Platform |
-|---|---|
-| Frontend | Vercel (React + Vite static build from `src/client`) |
-| Backend | Render (Node.js + Express from `src/server`) |
-| Database | MongoDB Atlas |
+| Layer | Local (Docker) | Cloud (recommended) |
+|---|---|---|
+| Frontend | nginx container | **Vercel** — `src/client` |
+| Backend | Node 20 container | **Render** — `src/server` |
+| Database | `mongo:7` container + volume | **MongoDB Atlas** |
 
-## Environment variables (production)
+> All patient data in this project is synthetic. There is no real PHI anywhere
+> in the repository, the database, or the deployment.
 
-Set these on the host — never commit `.env`:
+---
 
-```
-NODE_ENV=production
-PORT=5000
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/mednexus
-JWT_SECRET=<long random string, >=32 chars>
-JWT_EXPIRES_IN=7d
-CLIENT_URL=https://your-frontend.vercel.app
-AI_API_KEY=            # optional — rule-based assistant is the default
-```
+## 1 · One-command local deployment (Docker)
 
-The server refuses to boot in production without `MONGODB_URI` and a valid
-`JWT_SECRET` (see `src/server/config/env.js`).
-
-## Build & deploy
+Runs MongoDB, the API and the web bundle behind a single origin, with the same
+headers a production host would set. Requires Docker Desktop.
 
 ```bash
-# Frontend
-cd src/client
-npm install
-npm run build        # outputs static assets to src/client/dist
-# → deploy src/client/dist to Vercel (framework preset: Vite)
+cp deployment/.env.production.example deployment/.env
+# edit deployment/.env — set MONGODB_URI (leave the compose default), JWT_SECRET
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"   # JWT_SECRET
 
-# Backend
-cd src/server
-npm install --omit=dev
-npm run seed         # one-time: synthetic demo data (skip in real deployments)
-npm start
-# → deploy src/server to Render (start command: npm start)
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env up -d --build
 ```
 
-## Health check
+| URL | What it is |
+|---|---|
+| http://localhost:8080 | The web app (nginx) |
+| http://localhost:8080/api/health | API health, proxied same-origin |
+| http://localhost:5000/api/health | API direct (container port published) |
 
+Seed the demo dataset once (the API only auto-seeds in development):
+
+```bash
+docker compose -f deployment/docker-compose.yml exec api node src/server/seed/seed.js
 ```
-GET /api/health  →  { "status": "ok", "service": "MedNexus API" }
+
+Demo sign-ins: `patient@mednexus.demo` / `Patient@MedNexus2026`,
+`doctor@mednexus.demo` / `Doctor@MedNexus2026`,
+`admin@mednexus.demo` / `Admin@MedNexus2026`.
+
+Stop / reset:
+
+```bash
+docker compose -f deployment/docker-compose.yml down          # keep the volume
+docker compose -f deployment/docker-compose.yml down -v       # wipe the database
 ```
 
-## Notes
+### What the containers do
 
-- CORS is restricted to `CLIENT_URL` (allow-list, never wildcard).
-- Rate limits apply to login, registration, and sensitive APIs (429 on abuse).
-- All seeded data is synthetic/demo. Do not load real patient data.
-- Record the frozen commit SHA in `metadata/submission.yaml` before the deadline.
+- `Dockerfile.server` — npm-workspace install with `--omit=dev --omit=optional`
+  (no `mongodb-memory-server` in production), runs as the unprivileged `node`
+  user under `tini`, and health-checks `GET /api/health`.
+- `Dockerfile.client` — builds the Vite bundle, then serves it from nginx with
+  `try_files … /index.html` so React Router deep links work, plus gzip,
+  immutable caching for fingerprinted assets and no-cache for `index.html`.
+- `nginx.conf` — proxies `/api/*` to the API container, so the browser talks to
+  one origin and no API hostname is compiled into the bundle. Sets HSTS, CSP
+  (with `upgrade-insecure-requests`), `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy` and `X-Content-Type-Options`.
+
+---
+
+## 2 · Cloud deployment (Render + Vercel + Atlas)
+
+### 2.1 Database — MongoDB Atlas
+
+1. Create a free M0 cluster.
+2. Create a database user (no admin role needed) and allow the Render egress
+   addresses (`0.0.0.0/0` is acceptable for a demo, tighten for anything real).
+3. Copy the connection string: `mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/mednexus`.
+
+### 2.2 API — Render
+
+1. Push this repository to GitHub.
+2. Render → **New → Blueprint** → select the repo. `deployment/render.yaml`
+   defines the service, health check and environment variables.
+3. Fill in the prompted values:
+
+   | Variable | Value |
+   |---|---|
+   | `MONGODB_URI` | the Atlas string from 2.1 |
+   | `CLIENT_URL` | `https://<your-app>.vercel.app` (comma-separate extras) |
+   | `JWT_SECRET` | auto-generated by the blueprint (64 chars) |
+   | `SEED_*_PASSWORD` | auto-generated — note them down, they seed the demo accounts |
+
+   Without the blueprint, create a Web Service manually: root directory
+   `src/server`, build `npm install --omit=dev --omit=optional`, start
+   `node server.js`.
+
+4. Seed once from the Render shell: `node seed/seed.js`.
+
+### 2.3 Web — Vercel
+
+1. Vercel → **New Project** → same repository.
+2. **Root directory: `src/client`** (framework preset `Vite`, output `dist`).
+   `src/client/vercel.json` supplies the SPA rewrite, cache rules and headers.
+3. Environment variable: `VITE_API_URL=https://<your-api>.onrender.com/api`.
+   Omit it only if a platform rewrite (not configured here) proxies `/api`.
+4. Deploy, then set the resulting origin as `CLIENT_URL` on Render and redeploy
+   the API so CORS allows it.
+
+Vercel terminates TLS and redirects `http → https` at the edge. On Render,
+`FORCE_HTTPS=true` makes the API itself 308 any plain-HTTP request (health
+probes and loopback are exempt).
+
+---
+
+## 3 · Any Node host (Railway, Fly, a VM)
+
+```bash
+npm install                       # root, installs both workspaces
+npm run build                     # builds src/client/dist
+npm run seed                      # optional demo data
+NODE_ENV=production \
+MONGODB_URI="..." JWT_SECRET="..." CLIENT_URL="https://your-origin" \
+npm start                         # node src/server/server.js
+```
+
+Serve `src/client/dist` with any static host, pointed at the API origin via
+`VITE_API_URL` **at build time** (Vite inlines it).
+
+---
+
+## 4 · Environment variables
+
+`deployment/.env.production.example` documents every production variable;
+`src/server/.env.example` and `src/client/.env.example` do the same for local
+development. The essentials:
+
+| Variable | Where | Notes |
+|---|---|---|
+| `MONGODB_URI` | API | Required in production — the API refuses to boot without it |
+| `JWT_SECRET` | API | Required, ≥ 32 characters, validated at boot |
+| `CLIENT_URL` | API | CORS allow-list of browser origins |
+| `TRUST_PROXY` | API | `1` behind nginx/Render so rate limiting sees the real IP |
+| `FORCE_HTTPS` | API | Defaults to `true` in production |
+| `BCRYPT_ROUNDS` | API | `12` in production |
+| `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api` |
+| `VITE_ANALYTICS_DOMAIN` | Web (build) | Optional; unset disables analytics entirely |
+
+### Secrets never reach the browser
+
+`src/server/config/env.js` is the only module that reads `process.env`, it is
+never imported by client code, and the client bundle is built from
+`src/client` alone. The only build-time values the browser ever sees are
+`VITE_API_URL` and `VITE_ANALYTICS_DOMAIN`, both non-secret. Verify at any time:
+
+```bash
+grep -roE "(JWT_SECRET|MONGODB_URI|BCRYPT_ROUNDS|SEED_[A-Z_]+)" src/client/src src/client/dist | wc -l   # => 0
+```
+
+`.env` files are git-ignored; `.gitignore` also blocks `*.pem` and `*.key`.
+
+---
+
+## 5 · Post-deploy checklist
+
+- [ ] `GET /api/health` returns `{"status":"ok","service":"MedNexus API"}`
+- [ ] Registration returns an OTP challenge, and login is refused (403) until verified
+- [ ] Seeded patient/doctor/admin logins work
+- [ ] `/api/admin/digital-twin` returns 403 for patient and doctor tokens
+- [ ] HTTPS serves the site; plain HTTP redirects
+- [ ] `Strict-Transport-Security`, `Content-Security-Policy` and
+      `X-Frame-Options` are present on responses
+- [ ] `/robots.txt` and `/sitemap.xml` resolve
+- [ ] A deep link such as `/terms` renders the app rather than a 404
