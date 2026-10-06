@@ -228,7 +228,9 @@ async function login(req, res) {
       result: 'DENIED', ipAddress: ip, detail: 'Unverified email attempted login',
     });
     throw ApiError.forbidden(
-      'Please verify your email address first. Enter the 6-digit code we sent you, or request a new one.',
+      // "the code we sent you" was a claim the server cannot always honour: with
+      // no email transport configured, none was ever sent.
+      'Please verify your email address before signing in. Enter the 6-digit code for this account, or request a new one.',
       // Lets the client send the user straight to the verification step with
       // this address prefilled instead of dead-ending them on a toast.
       'EMAIL_NOT_VERIFIED'

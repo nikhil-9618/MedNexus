@@ -50,7 +50,7 @@ export default function LoginPage() {
       // leaving them stuck on a toast with no way forward.
       if (err?.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
         const email = form.email.trim().toLowerCase();
-        toast.info('This account still needs email verification. Enter the code we sent you.');
+        toast.info('This account still needs email verification. Enter your code on the next screen.');
         setBusy(false);
         navigate(PATHS.verifyEmail, { state: { email } });
         return;
