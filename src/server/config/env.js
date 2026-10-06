@@ -96,13 +96,25 @@ const config = {
   logRequests: bool(process.env.LOG_REQUESTS, !isTest),
 
   // ---- Outbound email (verification codes, security notices) --------------
-  // Resend's HTTP API is called directly with the runtime's global fetch, so
-  // enabling real delivery needs no extra dependency. With no key configured
-  // the OTP service falls back to its console transport.
+  // Two transports, in order of preference:
+  //  - Resend's HTTP API, called with the runtime's global fetch (no dependency).
+  //  - SMTP, which works with any provider or a personal mailbox (e.g. a Gmail
+  //    app password). SMTP is the only way to reach arbitrary recipients when
+  //    no sending domain can be verified.
+  // With neither configured the OTP service falls back to its console transport.
   email: {
     resendApiKey: process.env.RESEND_API_KEY || '',
-    from: process.env.EMAIL_FROM || 'MedNexus <onboarding@resend.dev>',
+    // Empty means "derive from the chosen transport" — see email.service.js.
+    from: process.env.EMAIL_FROM || '',
     replyTo: process.env.EMAIL_REPLY_TO || '',
+    smtp: {
+      host: process.env.SMTP_HOST || '',
+      port: int(process.env.SMTP_PORT, 587, { min: 1, max: 65535 }),
+      // Implicit TLS on 465, STARTTLS on 587/25. Defaulted from the port.
+      secure: bool(process.env.SMTP_SECURE, int(process.env.SMTP_PORT, 587) === 465),
+      user: process.env.SMTP_USER || '',
+      pass: process.env.SMTP_PASS || '',
+    },
   },
 
   // ---- Demo-deployment switches (both default OFF) ------------------------
@@ -116,8 +128,15 @@ const config = {
   otpEcho: bool(process.env.OTP_DEV_ECHO, false),
 };
 
-// True when a real provider can actually deliver a code.
-config.email.enabled = Boolean(config.email.resendApiKey);
+// A real send needs a provider URL or a credentialed SMTP host.
+config.email.smtp.enabled = Boolean(
+  config.email.smtp.host && config.email.smtp.user && config.email.smtp.pass
+);
+config.email.enabled = Boolean(config.email.resendApiKey) || config.email.smtp.enabled;
+// Which transport a send would actually use.
+config.email.transport = config.email.enabled
+  ? (config.email.resendApiKey ? 'resend' : 'smtp')
+  : 'none';
 
 /** Fail fast in production when a required secret is missing. */
 function validateProductionConfig() {
@@ -140,8 +159,18 @@ function validateProductionConfig() {
       // Not fatal: the server still boots, but no patient can ever finish
       // signup. Surface it loudly rather than failing silently in someone's inbox.
       console.warn(
-        '[security] No email provider configured (RESEND_API_KEY is empty) and ' +
-          'OTP_DEV_ECHO is off — verification codes cannot reach users.'
+        '[security] No email transport configured (RESEND_API_KEY and SMTP_* are ' +
+          'empty) and OTP_DEV_ECHO is off — verification codes cannot reach users.'
+      );
+    }
+    if (config.email.resendApiKey && config.email.from === '') {
+      // Resend's shared sandbox sender is usable but only delivers to the
+      // account owner's own address, which looks exactly like "verification is
+      // broken" to everyone else. Warn rather than refuse to boot.
+      console.warn(
+        '[security] RESEND_API_KEY is set without EMAIL_FROM, so codes are sent from ' +
+          "Resend's sandbox sender (onboarding@resend.dev), which only delivers to the " +
+          'Resend account owner. Set EMAIL_FROM to an address on a verified domain.'
       );
     }
   } else if (!config.jwt.secret) {
