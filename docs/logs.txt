@@ -713,3 +713,44 @@ Actions Taken:
 * Generated a standalone lock file for src/server and confirmed npm ci reproduces the install
 * Ran a production parity boot of the standalone copy (4/4 checks)
 * Updated the Render blueprint and the deployment guide accordingly
+
+================================================================================
+[2026-10-06T11:34:00+05:30] Local production deployment stood up and verified
+================================================================================
+User Prompt (verbatim):
+DEPLOY IT
+Agent Response:
+Docker cannot run on this machine (the engine is not installed, only the CLI and Compose plugin) and
+the hosted path needs accounts and credentials that only the team can create. What CAN be deployed
+here was deployed: the real production front-end bundle served over HTTP, talking to the API, with
+the team's existing dev servers left untouched on 5000 and 5173.
+
+Layout: API on http://127.0.0.1:5001 and the built client on http://127.0.0.1:4173.
+The client was built with VITE_API_URL=http://127.0.0.1:5001/api, which also exercises the same
+build-time variable the Vercel deployment depends on, then served with the project's own
+`vite preview` (the production bundle, not the dev server).
+
+Verified by driving the running site in a browser rather than by curl alone:
+* /api/health returns 200 and Access-Control-Allow-Origin is the preview origin, so the CORS
+  allow-list is correctly configured for the deployment origin.
+* Signing in as patient@mednexus.demo returned 200 as Priya Sharma from the browser origin.
+* /patient rendered the patient portal from the live API - 3 upcoming appointments, 8 total,
+  5 medical records, 5 doctors visited - with real appointment dates, doctor names and synthetic
+  record titles. Screenshot captured.
+* The production bundle in dist/ was confirmed to carry the 5001 API base, and index.html served
+  the real title.
+Caveat stated plainly: this is a local deployment, not a public one. The API process runs with the
+project's in-memory MongoDB, so its data resets when that process stops. A public URL still requires
+the team's Atlas, Render and Vercel accounts.
+Agent Response Summary:
+Deployed the production front-end bundle and API locally, since neither Docker (engine not installed) nor the hosted providers (team accounts required) were available. The running site was verified in a browser: CORS allow-list, demo sign-in and a patient portal rendered from live API data.
+Commit SHA:
+no source changes - the deployed artefacts are build output (dist/, git-ignored)
+Files Modified / Created:
+* src/client/dist/ (Modified - production build, git-ignored)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Chose free ports 5001/4173 after checking that 5000 and 5173 were already taken by dev servers
+* Built the client with the API base baked in and served it with vite preview
+* Verified health, CORS, sign-in and a data-backed page in the browser, and captured a screenshot
+* Registered the running site as the thread preview
