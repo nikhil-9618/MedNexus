@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, setAuthToken } from './api.js';
 
 export const authService = {
   me: () => api.get('/auth/me'),

@@ -665,3 +665,11 @@ Actions Taken:
 * Fixed my own test payload (changePasswordSchema requires confirmPassword) rather than loosening the schema
 * Ran npm test: 32 tests, 32 pass, 0 fail
 * Corrected the previous entry's estimated timestamp and one inaccurate file path
+
+============================================================
+[2026-10-06T11:04:00+05:30] ADDENDUM to the entry above
+============================================================
+Fixing a defect this turn introduced: services/authService.js USED setAuthToken
+without importing it, which would have thrown a ReferenceError on the first
+password change. The named import was corrected and the client rebuilt to
+confirm. Final commit SHA for the turn: 7529ce (see git log).
