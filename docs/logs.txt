@@ -674,3 +674,4 @@ without importing it, which would have thrown a ReferenceError on the first
 password change. The named import was corrected and the client rebuilt to
 confirm. Final commit SHA for the turn: 7529ce (see git log).
 [2026-10-06T11:06:00+05:30] Correction: the SHA predicted in the addendum above was wrong; the real final commit for that turn is db3468f (verified against git log).
+[2026-10-06T11:10:00+05:30] Clarification: the deploy blocker is sharper than "the daemon was not running". Docker Desktop is NOT installed on this machine (no Docker Desktop.exe under Program Files/Docker), so there is no engine at all to start - only the docker CLI plus the Compose plugin are present. docker compose up cannot be made to work here without installing a container engine first. The cloud path (Render + Vercel + Atlas) remains configured and verified but needs the team accounts.
