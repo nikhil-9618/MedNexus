@@ -39,6 +39,10 @@ function errorHandler(err, req, res, _next) {
   }
 
   const payload = { success: false, message };
+  // Stable machine-readable identifier so clients can branch without matching
+  // on the human-facing message. Only ever set from our own ApiError, never
+  // from a raw driver error (Mongo errors carry numeric `code` values).
+  if (err instanceof ApiError && err.code) payload.code = err.code;
   if (details) payload.details = details;
   else if (err instanceof ApiError && err.details) payload.details = err.details;
   if (config.isDev && statusCode >= 500) payload.debug = String(err && err.message);

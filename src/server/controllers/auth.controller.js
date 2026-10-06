@@ -96,7 +96,12 @@ async function register(req, res) {
     success: true,
     otpRequired: true,
     email: user.email,
-    message: 'We sent a 6-digit verification code to your email address.',
+    message: delivery.delivered
+      ? 'We emailed you a 6-digit verification code.'
+      : 'We sent a 6-digit verification code to your email address.',
+    // Whether a real provider accepted the message. When false the client can
+    // tell the user where the code actually went instead of "check your inbox".
+    delivered: delivery.delivered,
     // Populated only by the development/test transport — never in production.
     devOtp: delivery.devCode || undefined,
   });
@@ -141,7 +146,10 @@ async function resendEmailOtp(req, res) {
   const delivery = await otpService.issueOtp(user);
   return res.json({
     success: true,
-    message: 'A new verification code has been sent.',
+    message: delivery.delivered
+      ? 'A new verification code has been emailed to you.'
+      : 'A new verification code has been sent.',
+    delivered: delivery.delivered,
     devOtp: delivery.devCode || undefined,
   });
 }
@@ -199,7 +207,10 @@ async function login(req, res) {
       result: 'DENIED', ipAddress: ip, detail: 'Unverified email attempted login',
     });
     throw ApiError.forbidden(
-      'Please verify your email address first. Enter the 6-digit code we sent you, or request a new one.'
+      'Please verify your email address first. Enter the 6-digit code we sent you, or request a new one.',
+      // Lets the client send the user straight to the verification step with
+      // this address prefilled instead of dead-ending them on a toast.
+      'EMAIL_NOT_VERIFIED'
     );
   }
 

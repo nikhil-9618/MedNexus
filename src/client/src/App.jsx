@@ -77,6 +77,8 @@ export default function App() {
         <Route element={<AuthLayout />}>
           <Route path={PATHS.login} element={<LoginPage />} />
           <Route path={PATHS.register} element={<RegisterPage />} />
+          {/* Same component, own URL: lands directly on the verification step. */}
+          <Route path={PATHS.verifyEmail} element={<RegisterPage />} />
         </Route>
 
         {/* ---------- Security ---------- */}

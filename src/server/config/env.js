@@ -95,6 +95,16 @@ const config = {
 
   logRequests: bool(process.env.LOG_REQUESTS, !isTest),
 
+  // ---- Outbound email (verification codes, security notices) --------------
+  // Resend's HTTP API is called directly with the runtime's global fetch, so
+  // enabling real delivery needs no extra dependency. With no key configured
+  // the OTP service falls back to its console transport.
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    from: process.env.EMAIL_FROM || 'MedNexus <onboarding@resend.dev>',
+    replyTo: process.env.EMAIL_REPLY_TO || '',
+  },
+
   // ---- Demo-deployment switches (both default OFF) ------------------------
   // Seeding is a development convenience by default; a hosted demo has no
   // developer shell to run `npm run seed` in, so it can opt in explicitly.
@@ -105,6 +115,9 @@ const config = {
   // flow stays completable. It must stay off for any real patient data.
   otpEcho: bool(process.env.OTP_DEV_ECHO, false),
 };
+
+// True when a real provider can actually deliver a code.
+config.email.enabled = Boolean(config.email.resendApiKey);
 
 /** Fail fast in production when a required secret is missing. */
 function validateProductionConfig() {
@@ -121,6 +134,14 @@ function validateProductionConfig() {
       console.warn(
         '[security] OTP_DEV_ECHO is ON — verification codes are returned to the client ' +
           'because no email provider is configured. Demo/synthetic data only.'
+      );
+    }
+    if (!config.email.enabled && !config.otpEcho) {
+      // Not fatal: the server still boots, but no patient can ever finish
+      // signup. Surface it loudly rather than failing silently in someone's inbox.
+      console.warn(
+        '[security] No email provider configured (RESEND_API_KEY is empty) and ' +
+          'OTP_DEV_ECHO is off — verification codes cannot reach users.'
       );
     }
   } else if (!config.jwt.secret) {

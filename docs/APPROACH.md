@@ -329,3 +329,43 @@ assets and hides `package-lock.json` from diffs; `.gitignore` covers `.env`, bui
 `node_modules`, Freebuff session state and `.freebuff/`, while `!.env.*.example` keeps the
 example files tracked. Secrets were verified absent from the index (`git ls-files | grep '\.env$'`
 returns nothing). No remote is configured yet, so nothing has been pushed.
+
+## 20. Signup Verification: Code Delivery, Recovery and Durable State
+
+Patient signup is a two-step flow: `POST /api/auth/register` creates the account with
+`emailVerified: false` and issues a 6-digit code, then `POST /api/auth/verify-otp` confirms it
+and is the only thing that issues a session. Until that happens, `login` refuses the account with
+403. Three gaps made the flow look broken in practice, all fixed here.
+
+**Code delivery.** The `otp.service` `deliver()` transport only wrote codes to the server log, so
+no message ever reached an inbox. `services/email.service.js` now sends the code through Resend's
+HTTP API using the runtime's global `fetch` — no new dependency, which keeps the Render install
+lean. `RESEND_API_KEY` enables it; without a key the service reports `isConfigured() === false`
+and `deliver()` falls back to the console transport. A provider failure is logged and also falls
+back, so an outage can never fail registration. The HTML part escapes the recipient's name, so a
+crafted display name cannot inject markup into the mail.
+
+Registration and resend now return `delivered: true|false`, letting the UI say where the code
+actually went instead of always claiming "check your email". `devOtp` remains gated on
+`isDev || isTest || otpEcho`, verified in production mode to be absent when the echo switch is off.
+
+**Recovery from the sign-in form.** An account that was never confirmed could not sign in and the
+login page only showed a toast, so the user was stranded with no route back to verification. The
+unverified refusal now carries a stable machine-readable `code: 'EMAIL_NOT_VERIFIED'` (new
+`ApiError` `code` field, emitted by the error middleware only for our own errors, never for a raw
+driver error). The login page branches on it and navigates to `/verify-email`, which renders the
+same step-2 component with the address prefilled and resend available.
+
+**Durable development state.** With `MONGODB_URI` empty the DB layer started a purely in-memory
+MongoDB, so every restart erased all accounts and their pending codes — a code shown minutes
+earlier then matched nothing. The zero-setup instance is now backed by a real data directory
+(`src/server/.data/mongodb`, git-ignored), so registrations and pending codes survive restarts.
+A missing directory is created first: `mongodb-memory-server` fails with `ENOENT` on `scandir`
+rather than creating it. Tests keep a throwaway store so runs never inherit each other's state.
+
+**Evidence.** 33/33 API tests (new: "an unconfirmed signup can be recovered from the login page"
+walks register → blocked login with the code → resend → verify → login), 15/15 security checklist
+controls, 5/5 stubbed email-transport checks (request shape, injection escaping, provider error
+and network failure degradation), and 5/5 production-mode checks with `OTP_DEV_ECHO` both off
+(no code leaked) and on. Verified live: an OTP issued before a full server restart still validated
+afterwards, and the browser walked unconfirmed login → `/verify-email` → resend → verify → portal.

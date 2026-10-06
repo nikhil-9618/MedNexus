@@ -26,6 +26,8 @@ coverage/
 # ---------- Local database ----------
 **/*.mongodb
 db-data/
+# Zero-setup MongoDB data directory (src/server/config/db.js)
+src/server/.data/
 
 # ---------- OS / editor ----------
 .DS_Store

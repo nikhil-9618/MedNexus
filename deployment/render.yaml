@@ -43,10 +43,17 @@ services:
         value: "true"
       - key: BCRYPT_ROUNDS
         value: "12"
+      # Real email delivery for signup verification codes. Paste a Resend key
+      # (https://resend.com/api-keys) and a sender on a domain verified there.
+      # Without these, no patient can complete signup unless OTP_DEV_ECHO is on.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false # MedNexus <no-reply@your-verified-domain>
       # Demo conveniences for this hosted instance (synthetic data only):
-      # seed the empty database on first boot, and echo OTP codes to the
-      # client because no email provider is configured. Leave OTP_DEV_ECHO
-      # unset for any deployment that touches real patient data.
+      # seed the empty database on first boot. OTP_DEV_ECHO is a fallback for
+      # when RESEND_API_KEY is left empty — it echoes codes to the client, so
+      # leave it unset for any deployment that touches real patient data.
       - key: SEED_ON_EMPTY
         value: "true"
       - key: OTP_DEV_ECHO

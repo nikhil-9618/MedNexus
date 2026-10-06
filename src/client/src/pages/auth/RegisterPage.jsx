@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiError, apiFieldErrors } from '../../services/api.js';
@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const { register, verifyOtp, resendOtp } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({
     name: '', email: '', phone: '', dob: '', gender: '', password: '', confirmPassword: '',
   });
@@ -22,10 +23,16 @@ export default function RegisterPage() {
   const [honeypot, setHoneypot] = useState('');
   const formStartedAt = useRef(Date.now());
   // Email verification step
-  const [step, setStep] = useState('form');
-  const [pendingEmail, setPendingEmail] = useState('');
+  // Arriving at /verify-email (e.g. after trying to sign in to an account that
+  // was never confirmed) lands straight on the code step with the address known.
+  const prefillEmail = (location.state && location.state.email) || '';
+  const [step, setStep] = useState(prefillEmail ? 'otp' : 'form');
+  const [pendingEmail, setPendingEmail] = useState(prefillEmail);
   const [otp, setOtp] = useState('');
   const [devOtp, setDevOtp] = useState('');
+  // Whether a real email was accepted for this code: true / false / null when
+  // unknown (the user came here from the login page).
+  const [delivered, setDelivered] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -67,8 +74,13 @@ export default function RegisterPage() {
       if (res && res.otpRequired) {
         setPendingEmail(res.email || form.email.trim().toLowerCase());
         setDevOtp(res.devOtp || '');
+        setDelivered(Boolean(res.delivered));
         setStep('otp');
-        toast.success('Check your email for the 6-digit verification code.');
+        toast.success(
+          res.delivered
+            ? 'Check your email for the 6-digit verification code.'
+            : 'Your account is created. No email provider is configured, so the code is shown on the next screen.'
+        );
         return;
       }
 
@@ -106,6 +118,7 @@ export default function RegisterPage() {
     try {
       const res = await resendOtp(pendingEmail);
       if (res && res.devOtp) setDevOtp(res.devOtp);
+      if (res && typeof res.delivered === 'boolean') setDelivered(res.delivered);
       toast.success(res?.message || 'A new code has been sent.');
     } catch (err) {
       toast.error(apiError(err));
@@ -120,9 +133,12 @@ export default function RegisterPage() {
       <div>
         <h1 className="font-display text-2xl font-extrabold text-slate-900">Verify your email</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          We sent a 6-digit code to{' '}
-          <span className="font-semibold text-slate-700">{pendingEmail}</span>. Enter it below to
-          activate your account.
+          {delivered === true
+            ? 'We emailed a 6-digit code to'
+            : 'Enter the 6-digit verification code for'}{' '}
+          <span className="font-semibold text-slate-700">{pendingEmail}</span>
+          {delivered === true ? '. ' : ' below to activate your account. '}
+          This step is required once, before you can sign in.
         </p>
 
         <form onSubmit={submitOtp} className="mt-7 space-y-4" noValidate>
@@ -149,19 +165,23 @@ export default function RegisterPage() {
 
         {devOtp && (
           <div className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800 ring-1 ring-amber-200">
-            <span className="font-bold">Development mode:</span> no email provider is configured, so
-            the code is shown here and written to the server log —{' '}
+            <span className="font-bold">Development mode:</span> this code is exposed because the
+            server is not delivering mail — it is shown here and written to the server log —{' '}
             <span className="font-mono font-bold">{devOtp}</span>
           </div>
         )}
 
-        <div className="mt-5 flex items-center justify-between text-sm">
-          <button type="button" onClick={resend} disabled={busy} className="font-semibold text-brand-700 hover:underline disabled:opacity-50">
-            Resend code
-          </button>
+        <div className="mt-5 flex items-center justify-between text-sm">            <button
+              type="button"
+              onClick={resend}
+              disabled={busy}
+              className="font-semibold text-brand-700 hover:underline disabled:opacity-50"
+            >
+              Resend code
+            </button>
           <button
             type="button"
-            onClick={() => { setStep('form'); setOtp(''); setErrors({}); }}
+            onClick={() => { setStep('form'); setOtp(''); setErrors({}); setDevOtp(''); setDelivered(null); }}
             className="text-slate-500 hover:underline"
           >
             Use a different email

@@ -51,6 +51,16 @@ export default function LoginPage() {
       const dest = location.state?.from || homeForRole(user.role);
       navigate(dest, { replace: true });
     } catch (err) {
+      // An account that was never confirmed cannot sign in. The API tags that
+      // one refusal so we can send the user to the verification step instead of
+      // leaving them stuck on a toast with no way forward.
+      if (err?.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        const email = form.email.trim().toLowerCase();
+        toast.info('This account still needs email verification. Enter the code we sent you.');
+        setBusy(false);
+        navigate(PATHS.verifyEmail, { state: { email } });
+        return;
+      }
       toast.error(apiError(err));
     } finally {
       setBusy(false);

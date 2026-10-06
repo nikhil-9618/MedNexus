@@ -103,12 +103,17 @@ describe('authentication', () => {
     assert.equal(reg.body.otpRequired, true);
     assert.equal(reg.body.token, undefined, 'no session may be issued before verification');
     assert.ok(reg.body.devOtp, 'test transport should surface the code');
+    // No provider is configured in tests, so the client is told plainly.
+    assert.equal(reg.body.delivered, false, 'registration must report whether mail was delivered');
 
     // Login is refused until the emailed code is confirmed.
     const blocked = await api('POST', '/api/auth/login', {
       body: { email: 'reg.test@example.demo', password: 'Str0ngPass!1', role: 'PATIENT' },
     });
     assert.equal(blocked.status, 403, 'an unverified email must not be able to sign in');
+    // The refusal carries a stable code so the client can send the user to the
+    // verification step instead of dead-ending them on an error toast.
+    assert.equal(blocked.body.code, 'EMAIL_NOT_VERIFIED');
 
     // A wrong code is rejected with a non-enumerating 400.
     const wrongCode = reg.body.devOtp === '000000' ? '111111' : '000000';
@@ -217,6 +222,39 @@ describe('authentication', () => {
   test('role mismatch on login (patient using doctor portal) is denied (403)', async () => {
     const res = await api('POST', '/api/auth/login', { body: { email: 'login.test@example.demo', password: 'Str0ngPass!2', role: 'DOCTOR' } });
     assert.equal(res.status, 403);
+  });
+
+  test('an unconfirmed signup can be recovered from the login page', async () => {
+    const email = 'recover.signup@example.demo';
+    const password = 'Str0ngPass!9';
+
+    const reg = await api('POST', '/api/auth/register', {
+      body: { name: 'Recovery Tester', email, password, confirmPassword: password, phone: '+1-555-7777', dob: '1988-08-08', gender: 'Male' },
+    });
+    assert.equal(reg.status, 201);
+
+    // The user forgot the code and came back to the sign-in form.
+    const blocked = await api('POST', '/api/auth/login', { body: { email, password, role: 'PATIENT' } });
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.body.code, 'EMAIL_NOT_VERIFIED', 'the client needs this to route to /verify-email');
+
+    // Age the last-sent stamp to model a user who returns after the resend
+    // cooldown (the cooldown itself is a deliberate anti-abuse control).
+    const User = require('../models/User');
+    await User.updateOne({ email }, { $set: { emailOtpLastSentAt: new Date(Date.now() - 60 * 1000) } });
+
+    // Requesting a fresh code must work without the original one, then verify.
+    const resent = await api('POST', '/api/auth/resend-otp', { body: { email } });
+    assert.equal(resent.status, 200);
+    assert.ok(resent.body.devOtp, 'test transport should surface the re-issued code');
+
+    const verified = await api('POST', '/api/auth/verify-otp', { body: { email, otp: resent.body.devOtp } });
+    assert.equal(verified.status, 200, `recovery verification failed: ${verified.text}`);
+
+    // And now the ordinary sign-in the user originally wanted.
+    const login = await api('POST', '/api/auth/login', { body: { email, password, role: 'PATIENT' } });
+    assert.equal(login.status, 200, `login after recovery failed: ${login.text}`);
+    assert.ok(login.body.token);
   });
 });
 

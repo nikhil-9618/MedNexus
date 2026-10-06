@@ -16,6 +16,7 @@ const bcrypt = require('bcryptjs');
 const { ApiError } = require('../utils/ApiError');
 const { config } = require('../config/env');
 const { auditAsync } = require('./audit.service');
+const emailService = require('./email.service');
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;
@@ -29,13 +30,28 @@ function generateCode() {
 /**
  * Deliver a code to the user.
  *
- * The dev transport writes to the server log and returns the code so the
- * registration flow can be exercised end to end without an email provider.
- * Swap this for a real provider (Resend/SendGrid/SES) and return
- * { delivered: true, devCode: null } once credentials exist.
+ * Two transports, in order:
+ *  1. Real email via email.service (Resend) when RESEND_API_KEY is configured.
+ *  2. The console/dev transport otherwise — it logs the code and returns it so
+ *     the registration flow can still be exercised without a provider.
+ *
+ * `devCode` is only ever populated when the code is exposed on purpose
+ * (development, tests, or an explicit OTP_DEV_ECHO demo switch), so a real
+ * deployment never leaks a code to the client.
  */
 async function deliver({ email, code, name }) {
   const expose = config.isDev || config.isTest || config.otpEcho;
+
+  if (emailService.isConfigured()) {
+    const sent = await emailService.sendOtpEmail({ to: email, name, code });
+    if (sent.delivered) {
+      console.log(`[otp] verification code emailed to ${email} — expires in 10 minutes`);
+      return { delivered: true, transport: 'resend', devCode: expose ? code : null };
+    }
+    // Provider configured but the send failed: fall through to the console so
+    // the flow stays recoverable (and the failure is already logged).
+  }
+
   const transport = expose && config.isProd ? 'demo-console' : 'dev-console';
   console.log(`[otp] verification code for ${email} (${name}): ${code} — expires in 10 minutes`);
   return { delivered: false, transport, devCode: expose ? code : null };
