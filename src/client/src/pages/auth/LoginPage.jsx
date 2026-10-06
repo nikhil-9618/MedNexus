@@ -14,7 +14,7 @@ const ROLES = [
 ];
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, booting } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,12 +45,9 @@ export default function LoginPage() {
       const dest = location.state?.from || homeForRole(user.role);
       navigate(dest, { replace: true });
     } catch (err) {
-      // An account that was never confirmed cannot sign in. The API tags that
-      // one refusal so we can send the user to the verification step instead of
-      // leaving them stuck on a toast with no way forward.
-      if (err?.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+      if (err?.code === 'EMAIL_NOT_VERIFIED') {
         const email = form.email.trim().toLowerCase();
-        toast.info('This account still needs email verification. Enter the code we sent you.');
+        toast.info('Confirm your account using the link in your email.');
         setBusy(false);
         navigate(PATHS.verifyEmail, { state: { email } });
         return;
@@ -145,7 +142,7 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <button type="submit" className="btn-primary w-full py-3" disabled={busy}>
+        <button type="submit" className="btn-primary w-full py-3" disabled={busy || booting}>
           {busy ? <Loader label="Logging in…" /> : 'Login'}
         </button>
       </form>

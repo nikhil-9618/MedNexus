@@ -1,19 +1,9 @@
 import axios from 'axios';
 
-// Same-origin "/api" by default: the Vite dev proxy and the production nginx
-// container both forward it to the Express server, so no hostname is baked in.
-// Set VITE_API_URL only when the API lives on a different origin (e.g. Render).
-const baseURL = (import.meta.env.VITE_API_URL || '').trim() || '/api';
-
 export const api = axios.create({
-  baseURL,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 });
-
-export function setAuthToken(token) {
-  if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
-  else delete api.defaults.headers.common.Authorization;
-}
 
 /** Extract a human-friendly message from an API error. */
 export function apiError(err) {

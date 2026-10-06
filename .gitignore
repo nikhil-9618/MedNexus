@@ -41,3 +41,9 @@ Thumbs.db
 
 # ---------- Local tooling state (freebuff preview runner) ----------
 .freebuff/
+
+.netlify/*
+!.netlify/results.md
+!.netlify/features/
+src/client/.netlify/
+deno.lock
