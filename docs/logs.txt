@@ -891,3 +891,58 @@ Actions Taken:
 * Proved the root lockfile change is exactly one added package (nodemailer 10.0.15) and that
   npm ci --omit=optional now resolves cleanly (CI_DRYRUN_EXIT=0)
 * Opened the deploy step as a question for the team because it needs their Netlify credentials
+================================================================================
+[2026-10-06T13:25:13+05:30] Netlify deploy path completed: live Atlas cluster, credential leak fixed
+================================================================================
+User Prompt (verbatim):
+deploy it in netlify
+Agent Response:
+(The continuation of the entry above, after the team chose to deploy the API as well.) Netlify
+itself still cannot be authenticated from this machine — no CLI, no token, no credential store —
+so the publish remains a dashboard action. Everything on either side of it is now done and
+measured. The Atlas cluster used to be unreachable (TLS alert 80); it is reachable now, so the
+cloud database path stopped being theoretical and was tested for real. The API was booted on a
+spare port with the real MONGODB_URI and it connected, wrote 6 departments and 4 settings,
+bootstrapped exactly one administrator (admin@mednexus.local, create-only), seeded nothing else,
+returned 401 for an anonymous caller on /api/admin/digital-twin, issued a 201 OTP challenge on
+registration with no token attached, refused login with 403 EMAIL_NOT_VERIFIED until the code
+was entered, and stored that code as a bcrypt hash — 14/14. That test also caught two things
+worth fixing. First, config/db.js logged the connection string verbatim, publishing the cluster
+password into stdout on every boot; on Render that is a retained, widely readable log stream, so
+the line now runs through a redactUri() helper and a regression check asserts the password never
+appears in process output. Second, the Render blueprint exposed Resend but not SMTP, which is the
+only transport that reaches arbitrary recipients without owning a verified domain — the exact case
+the SMTP path was written for — so SMTP_HOST/SMTP_USER/SMTP_PASS were added and OTP_DEV_ECHO was
+changed from "true" to an explicit opt-in. Netlify is now the documented web host, ahead of
+Vercel.
+Agent Response Summary:
+Verified the whole cloud path against the real Atlas cluster rather than assuming it (14/14),
+which surfaced a production credential leak in the boot log and a missing SMTP block in the
+Render blueprint. Both fixed; the Netlify config and artifact were re-verified (34/34 and 26/26)
+and the test suite re-run (33/33). The only remaining step is the Netlify publish itself, which
+needs the team's Netlify account.
+Commit SHA:
+e12bd6c (code and docs); the earlier half of this turn is 91fbf03 (netlify.toml + api.js +
+root lockfile) and its log entry is cf2e5f8
+Files Modified / Created:
+* src/server/config/db.js (Modified)
+* deployment/render.yaml (Modified)
+* deployment/README.md (Modified)
+* docs/APPROACH.md (Modified)
+* netlify.toml (Created, 91fbf03)
+* src/client/src/services/api.js (Modified, 91fbf03)
+* package-lock.json (Modified, 91fbf03)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Confirmed again that no Netlify CLI, token or credential store exists here
+* Re-ran the Atlas connectivity probe: SRV resolves, connect succeeded in 924 ms
+* Wrote .freebuff/atlas-api-check.cjs and booted the API against Atlas, then inspected the cluster
+  with the driver and removed the probe account it created (14 PASS / 0 FAIL)
+* Found and fixed the connection-string log leak; added a check asserting the password never
+  reaches stdout
+* Added the SMTP variables the blueprint was missing and made OTP_DEV_ECHO an explicit opt-in
+* Re-ran npm test (33/33, TEST_EXIT=0) after the db.js change
+* Re-ran the Netlify config verifier (34 PASS / 0 FAIL) and the artifact verifier (26 PASS / 0 FAIL)
+* Parsed deployment/render.yaml with js-yaml and asserted every environment variable is well formed
+* Rewrote the deployment record around Netlify, and corrected its stale post-deploy checklist
+  (it still asked the operator to confirm that the removed demo logins worked)
