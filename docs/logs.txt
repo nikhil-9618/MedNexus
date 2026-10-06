@@ -1001,3 +1001,46 @@ Actions Taken:
 * Ran npm test (33/33, TEST_EXIT=0) and the client build (BUILD_EXIT=0)
 * Restarted the dev stack so the running app serves the fixed code, and confirmed both ports
 * Walked the real UI: register -> honest OTP panel -> verify -> patient portal as "Ravi Kumar"
+================================================================================
+[2026-10-06T14:07:54+05:30] The sign-in OTP path itself verified, and the last two false delivery claims
+================================================================================
+User Prompt (verbatim):
+in sign in we cant verify the real otp login fix it and give me everything running correctly
+Agent Response:
+Follow-up within the same turn, after the first pass fixed the registration response. The
+sign-in route specifically was then walked end to end rather than reasoned about. Logging in with
+an unconfirmed account returns 403 EMAIL_NOT_VERIFIED, and the client routes the user to
+/verify-email - but two more messages on that path still asserted a code had been sent: the 403
+itself ("Enter the 6-digit code we sent you") and the toast the sign-in page shows before it
+redirects. Both are impossible to honour with no transport configured, so both were reworded.
+Then the browser run: sign in with an unconfirmed account -> redirected to /verify-email showing
+the new "arriving here from sign-in" panel -> Resend code -> the fresh code appears -> entered it
+-> verified and landed on /patient as that account. That is the exact journey that was reported
+as broken, now working. Note the deliberate division of what is proven: the local flow works
+completely, and the code leaves through the console transport; putting it in a real inbox is the
+only thing outstanding and it needs the team's Gmail App Password, because SMTP is the one
+transport that reaches arbitrary recipients without a verified sending domain. SMTP_HOST is
+already staged as smtp.gmail.com:587, so only SMTP_USER and SMTP_PASS remain, and a live check
+exists to validate them against Google and send one real message before anything is wired in.
+Agent Response Summary:
+Verified the sign-in branch of the OTP repair in the browser and removed the two remaining
+messages that claimed a code had been sent. Registration, sign-in, resend, verification and the
+portal landing all work against the running stack; only real-inbox delivery remains, blocked on
+a credential the team has to supply.
+Commit SHA:
+d39f50c; the earlier half of this turn is 87e4da4
+Files Modified / Created:
+* src/server/controllers/auth.controller.js (Modified)
+* src/client/src/pages/auth/LoginPage.jsx (Modified)
+* src/server/.env (Modified, git-ignored - SMTP_HOST staged, no secret written)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Staged SMTP_HOST=smtp.gmail.com and SMTP_PORT=587 in the ignored env file, leaving zero secret
+* Wrote .freebuff/smtp-live-check.cjs to verify a credential against Google and send one real
+  message before wiring it in
+* Registered an unverified account and confirmed the login refusal carries EMAIL_NOT_VERIFIED
+* Reworded the 403 and the sign-in toast so neither claims a code was sent
+* Restarted the dev stack so the running app served the corrected code
+* Walked the browser journey: sign-in -> /verify-email -> Resend code -> verify -> /patient
+* Re-ran npm test (33/33, TEST_EXIT=0) and the client build (BUILD_EXIT=0)
+* Confirmed both ports answer 200 after the restart
