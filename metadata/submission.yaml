@@ -7,7 +7,7 @@ submission:
   repository: ""          # Team GitHub repository URL — awaiting the team's repository
   final_commit_sha: "c69fe4b761fb14a4f37f478457bf5ad21f8c1f26"  # Frozen application code
   deployed_url: ""        # Live deployment URL (if any)
-  frontend: "Vercel"      # or Netlify
+  frontend: "Netlify"      # Netlify (netlify.toml configured; Vercel alternative)
   backend: "Render"       # or Railway
   database: "MongoDB Atlas"
   submitted_at: ""        # ISO-8601 timestamp

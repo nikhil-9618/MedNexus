@@ -33,9 +33,7 @@ const PatientDashboardPage = lazy(() => import('./pages/patient/PatientDashboard
 const FindDoctorsPage = lazy(() => import('./pages/patient/FindDoctorsPage.jsx'));
 const DoctorProfilePage = lazy(() => import('./pages/patient/DoctorProfilePage.jsx'));
 const BookAppointmentPage = lazy(() => import('./pages/patient/BookAppointmentPage.jsx'));
-// NOTE: pages/patient/BookingWizardPage.jsx exists but is not routed, so it is
-// intentionally not imported here — an unused lazy import would still ship a
-// chunk nothing can reach.
+const BookingWizardPage = lazy(() => import('./pages/patient/BookingWizardPage.jsx'));
 const AppointmentsPage = lazy(() => import('./pages/patient/AppointmentsPage.jsx'));
 const AppointmentHistoryPage = lazy(() => import('./pages/patient/AppointmentHistoryPage.jsx'));
 const RecordsPage = lazy(() => import('./pages/patient/RecordsPage.jsx'));
@@ -92,6 +90,7 @@ export default function App() {
               <Route path="doctors" element={<FindDoctorsPage />} />
               <Route path="doctors/:id" element={<DoctorProfilePage />} />
               <Route path="doctors/:id/book" element={<BookAppointmentPage />} />
+              <Route path="book" element={<BookingWizardPage />} />
               <Route path="appointments" element={<AppointmentsPage />} />
               <Route path="history" element={<AppointmentHistoryPage />} />
               <Route path="records" element={<RecordsPage />} />

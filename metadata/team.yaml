@@ -8,15 +8,15 @@ team:
   repository: ""    # Your team's GitHub repository URL
 
 members:
-  - name: "NIKHIL"      
+  - name: "NIKHIL"
     email: "24p61a6268@vbithyd.ac.in"
     role: "Developer"
-  - name: "N Snehith "       
+  - name: "N Snehith"
     email: "nsnehithreddy@gmail.com"
-    role: "Develoloper"
-    name: "Shaik Shaheerah"
+    role: "Developer"
+  - name: "Shaik Shaheerah"
     email: "25p65a6209@vbithyd.ac.in"
     role: "Designing"
-    name: "Nandini"
+  - name: "Nandini"
     email: "24p61a6293@vbithyd.ac.in"
     role: "Requirement analyst and Documentation"
