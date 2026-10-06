@@ -675,3 +675,102 @@ password change. The named import was corrected and the client rebuilt to
 confirm. Final commit SHA for the turn: 7529ce (see git log).
 [2026-10-06T11:06:00+05:30] Correction: the SHA predicted in the addendum above was wrong; the real final commit for that turn is db3468f (verified against git log).
 [2026-10-06T11:10:00+05:30] Clarification: the deploy blocker is sharper than "the daemon was not running". Docker Desktop is NOT installed on this machine (no Docker Desktop.exe under Program Files/Docker), so there is no engine at all to start - only the docker CLI plus the Compose plugin are present. docker compose up cannot be made to work here without installing a container engine first. The cloud path (Render + Vercel + Atlas) remains configured and verified but needs the team accounts.
+================================================================================
+[2026-10-06T11:34:29+05:30] Diagnose and repair the signup OTP verification flow
+================================================================================
+User Prompt (verbatim):
+otp verifiaction not done
+
+Agent Response:
+I reproduced the whole flow before changing anything, and the server-side OTP
+path was already correct: register returns 201 with the code, verify-otp accepts
+{email, otp} and returns a session, and both the :5000 dev API and the :5001
+production instance behave identically. The client was correct too - I drove the
+register form in the browser through the OTP step and into the patient portal.
+
+What was actually wrong is that the code never went anywhere. Three separate
+defects, all fixed:
+
+1. NO EMAIL WAS EVER SENT. otp.service deliver() only wrote the code to the
+   server log; there was no provider library in the dependency tree at all. New
+   src/server/services/email.service.js sends the code through Resend's HTTP API
+   using Node's global fetch, so real delivery needs no new dependency and the
+   Render install stays lean. RESEND_API_KEY enables it; with no key it reports
+   isConfigured() === false and deliver() keeps the console transport. A provider
+   failure is logged and also falls back, so an outage can never fail a
+   registration. The HTML part escapes the recipient's name so a crafted display
+   name cannot inject markup. register/resend now return delivered:true|false so
+   the UI says where the code actually went instead of always "check your email".
+   devOtp stays gated on isDev || isTest || otpEcho and was verified in
+   production mode to be absent when the echo switch is off.
+
+2. AN UNCONFIRMED ACCOUNT WAS STRANDED. Login refused unverified accounts with
+   403 and the login page only showed a toast, so there was no way back to the
+   verification step. ApiError gained an optional machine-readable `code`, the
+   error middleware emits it only for our own errors (never a raw driver error,
+   whose numeric `code` would otherwise leak in), the refusal carries
+   EMAIL_NOT_VERIFIED, and the login page branches on it to navigate to a new
+   /verify-email route that renders the same step-2 component with the address
+   prefilled and resend available.
+
+3. REGISTRATIONS VANISHED ON RESTART. With MONGODB_URI empty the DB layer started
+   a purely in-memory MongoDB, so every restart erased all accounts and their
+   pending codes - a code shown minutes earlier then matched nothing. The
+   zero-setup instance is now backed by src/server/.data/mongodb (git-ignored) so
+   accounts and pending codes survive restarts. The directory is created first:
+   mongodb-memory-server fails with ENOENT on scandir rather than creating it, a
+   defect this turn introduced and caught only because the changed file was
+   re-run. Tests keep a throwaway store so runs never inherit each other's state.
+
+Evidence: 33/33 API tests (one new test walks register -> blocked login carrying
+the code -> resend -> verify -> login), 15/15 security-checklist controls, 5/5
+stubbed email-transport checks (request shape, injection escaping, provider error
+and network failure degradation), 5/5 production-mode checks with OTP_DEV_ECHO
+both off and on, and a client build. Verified live: an OTP issued before a full
+server restart still validated afterwards, and the browser walked unconfirmed
+login -> /verify-email -> resend -> verify -> patient portal with no unexpected
+console or network errors.
+
+Still open, and needing the team's credentials: no RESEND_API_KEY is configured,
+so the code still cannot reach a real inbox until one is supplied.
+
+Agent Response Summary:
+Reproduced the flow end to end first and found the server and client OTP logic
+already correct, so the failure was not verification itself. Fixed the three real
+defects: no email provider was wired at all, an unconfirmed account had no route
+back to the verification step from the sign-in form, and the in-memory dev
+database erased every account and pending code on restart. Chose Resend over HTTP
+with global fetch specifically to avoid adding a dependency to the production
+install, and verified each change against a live server and the real UI rather
+than trusting the unit tests alone.
+Commit SHA:
+acc5052b5d8cc0eac8b430c7f70a424196002f1e
+Files Modified / Created:
+* src/server/services/email.service.js (Created)
+* src/server/services/otp.service.js (Modified)
+* src/server/config/env.js (Modified)
+* src/server/config/db.js (Modified)
+* src/server/controllers/auth.controller.js (Modified)
+* src/server/utils/ApiError.js (Modified)
+* src/server/middleware/error.middleware.js (Modified)
+* src/server/tests/api.test.js (Modified)
+* src/server/.env.example (Modified)
+* src/client/src/pages/auth/RegisterPage.jsx (Modified)
+* src/client/src/pages/auth/LoginPage.jsx (Modified)
+* src/client/src/routes/paths.js (Modified)
+* src/client/src/App.jsx (Modified)
+* deployment/render.yaml (Modified)
+* deployment/.env.production.example (Modified)
+* .gitignore (Modified)
+* docs/APPROACH.md (Modified)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Reproduced register/verify-otp against both live APIs and confirmed 201 -> 200 + token
+* Swept every API process log and found a successful 201 registration with zero verify-otp calls, plus three bot-trap 400s
+* Drove the register -> OTP -> portal flow in a real browser tab (incognito)
+* Wrote a 5-check stubbed-fetch test for the new email transport
+* Restarted the API, re-registered and proved a pre-restart OTP still validates
+* Added the EMAIL_NOT_VERIFIED code and the /verify-email recovery route
+* Ran npm test (33/33), security-checklist (15/15), the email transport check (5/5) and the production-mode check (5/5 both ways)
+* Built the client (BUILD_EXIT=0) and re-walked the recovery journey in the browser
+* Updated APPROACH.md with section 20 and committed the turn
