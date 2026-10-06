@@ -673,3 +673,4 @@ Fixing a defect this turn introduced: services/authService.js USED setAuthToken
 without importing it, which would have thrown a ReferenceError on the first
 password change. The named import was corrected and the client rebuilt to
 confirm. Final commit SHA for the turn: 7529ce (see git log).
+[2026-10-06T11:06:00+05:30] Correction: the SHA predicted in the addendum above was wrong; the real final commit for that turn is db3468f (verified against git log).
