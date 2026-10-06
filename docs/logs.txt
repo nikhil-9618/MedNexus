@@ -774,3 +774,4 @@ Actions Taken:
 * Ran npm test (33/33), security-checklist (15/15), the email transport check (5/5) and the production-mode check (5/5 both ways)
 * Built the client (BUILD_EXIT=0) and re-walked the recovery journey in the browser
 * Updated APPROACH.md with section 20 and committed the turn
+[2026-10-06T11:36:00+05:30] The turn log entry above was itself committed as d5a3ccf; the code and APPROACH.md change it describes is commit acc5052. Render this turn's addendum unnecessary: both SHAs are real and verified against git log.
