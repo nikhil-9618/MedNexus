@@ -1206,7 +1206,7 @@ Diagnosed the cause of the `404 Not Found` error encountered on the live Vercel 
 Agent Response Summary:
 Identified that the Vercel static host returned 404 because the Express backend API is not connected via VITE_API_URL. Enhanced API error diagnostics, rebuilt the client bundle, updated submission metadata, and provided configuration steps.
 Commit SHA:
-<staged and committed below>
+577608d
 Files Modified / Created:
 * src/client/src/services/api.js (Modified)
 * metadata/team.yaml (Modified)
