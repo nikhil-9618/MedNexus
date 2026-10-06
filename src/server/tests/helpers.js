@@ -7,6 +7,12 @@
  * which keeps the fixtures honest: they exercise the same code path an operator
  * uses to provision a doctor.
  */
+// Pin the environment BEFORE any application module is required, so the suite
+// can never be shaped by a developer's .env (which config/env.js deliberately
+// skips loading under NODE_ENV=test).
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-mednexus-unit-tests-0123456789abcdef';
+
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
@@ -99,6 +105,8 @@ function buildTestApp() {
   // env.js was required earlier (config module) — refresh its secret.
   const { config } = require('../config/env');
   config.jwt.secret = process.env.JWT_SECRET;
+  config.isTest = true;
+  config.isDev = false;
   const { buildApp } = require('../app');
   return buildApp();
 }

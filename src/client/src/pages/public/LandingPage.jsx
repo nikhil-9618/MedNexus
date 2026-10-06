@@ -274,12 +274,12 @@ export default function LandingPage() {
           Ready to explore MedNexus?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-base text-slate-600">
-          Sign in with a demo account or create your own — every record in this deployment is
-          synthetic demo data.
+          Create a patient account in a couple of minutes. Every clinical record in this
+          deployment is synthetic — no real patient information is ever stored.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link to={PATHS.register} className="btn-primary px-6 py-3">Create a patient account</Link>
-          <Link to={PATHS.login} className="btn-secondary px-6 py-3">Use a demo account</Link>
+          <Link to={PATHS.login} className="btn-secondary px-6 py-3">Sign in</Link>
         </div>
       </section>
     </div>

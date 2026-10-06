@@ -49,10 +49,12 @@ services:
       TRUST_PROXY: "1"
       FORCE_HTTPS: ${FORCE_HTTPS:-false}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-      # Seeded demo credentials (synthetic data only).
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@MedNexus2026}
-      SEED_DOCTOR_PASSWORD: ${SEED_DOCTOR_PASSWORD:-Doctor@MedNexus2026}
-      SEED_PATIENT_PASSWORD: ${SEED_PATIENT_PASSWORD:-Patient@MedNexus2026}
+      # The first administrator. No accounts are seeded, so without these the
+      # stack has nobody who can sign in. Create the account once with:
+      #   docker compose -f deployment/docker-compose.yml exec api npm run create-admin
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Clinic Administrator}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     # Seeding: the API seeds automatically on first boot only when the database
     # is empty and NODE_ENV is development. In production run it explicitly:
     #   docker compose -f deployment/docker-compose.yml exec api node src/server/seed/seed.js

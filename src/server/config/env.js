@@ -3,19 +3,39 @@
  * Every module reads settings from here — no process.env scatter.
  * Secrets live only in .env (never committed). See .env.example.
  */
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
-// Under the node:test runner, never let a developer .env influence config.
+// The one environment file this application reads, pinned to an absolute path.
+//
+// dotenv resolves '.env' against process.cwd(). The API is started from
+// src/server while scripts and tools are often run from the repository root, so
+// an unpinned path lets the same repository read two different env files
+// depending on where the command was typed — which looks exactly like "my
+// config is being ignored".
+const ENV_FILE = path.resolve(__dirname, '..', '.env');
+
+// Tests must be hermetic: a developer's .env (bcrypt rounds, OTP echo, a live
+// database) must never change what the suite exercises.
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config({ path: ENV_FILE });
+}
+
+// Never silently ignore a second .env higher up the tree.
+const REPO_ENV = path.resolve(__dirname, '..', '..', '..', '.env');
+if (process.env.NODE_ENV !== 'test' && REPO_ENV !== ENV_FILE && fs.existsSync(REPO_ENV)) {
+  console.warn(`[config] ignoring ${REPO_ENV}: this API reads ${ENV_FILE}`);
+}
+
+// Under the node:test runner configuration is fixed by the harness.
 // NOTE: dotenv.config() does NOT override already-set vars, so a test harness
 // that sets process.env.JWT_SECRET BEFORE requiring this module is respected.
 // We only zero values that were NOT explicitly provided by the harness.
 if (process.env.NODE_ENV === 'test') {
   if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'test-only-secret-change-me';
-  if (!process.env.MONGODB_URI) process.env.MONGODB_URI = '';
+  process.env.MONGODB_URI = '';
   if (!process.env.PORT) process.env.PORT = '0';
 }
-
-const path = require('path');
 
 const int = (value, fallback, { min = -Infinity, max = Infinity } = {}) => {
   const n = parseInt(value, 10);

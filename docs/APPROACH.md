@@ -148,13 +148,32 @@ No fake AI: when `AI_API_KEY` is absent the rule-based engine is used — by des
 
 ## 9. Synthetic Data
 
-`src/server/seed/seed.js` generates 20+ synthetic patients, 8+ synthetic doctors across
-departments, 50+ appointments, a **queue token per live appointment**, medical records, and
-audit logs. Demo accounts: `patient@mednexus.demo` / `doctor@mednexus.demo` /
-`admin@mednexus.demo` (development-only passwords documented in README).
+**The seed creates reference data only** — departments and booking settings — and no accounts
+whatsoever. An earlier revision generated 22 synthetic patients, 8 doctors and 50+ appointments
+with published demo logins; that whole dataset and every one of those credentials has been
+removed, so the only way into the application is a real account.
 
-Synthetic-data disclosure lives where it is legally relevant — the Privacy page, the login
-demo-account panel and the records notice — rather than on every operational screen.
+Accounts are now created through the three supported paths, and only these:
+
+1. **The first administrator** — `npm run create-admin` (or `ADMIN_EMAIL` + `ADMIN_PASSWORD`,
+   which lets the API create it during boot so a hosted instance needs no shell). The password
+   is hashed with bcrypt, printed once, and never stored in plaintext. Re-running the command
+   resets it and bumps `tokenVersion`, so rows in the audit log show the reset.
+2. **Doctors** — provisioned by an administrator from Admin → Manage Doctors; the endpoint
+   takes an explicit password and the `emailVerified` default of `true` means the account can
+   sign in immediately.
+3. **Patients** — self-registration plus the emailed verification code.
+
+Two consequences are deliberate and documented rather than hidden: a fresh database has no
+users at all, so the dashboards, doctor directory and digital twin stay empty until accounts
+exist; and `seedIfEmpty()` now decides "is this database empty?" by counting **departments**,
+not users. Counting users would have stayed at zero forever and re-run the seed on every boot,
+wiping the departments it had just written. The seed also no longer clears the `Counter`
+collection: those sequences are monotonic, and resetting them would hand a new patient a
+`P####` code an existing patient already holds.
+
+Synthetic-data disclosure lives where it is legally relevant — the Privacy page and the records
+notice — rather than on every operational screen.
 
 ## 10. Milestones
 
@@ -235,8 +254,9 @@ admin console's operational Audit Logs tool; it is simply not product marketing.
 **B — Render + Vercel + Atlas (managed cloud)**
 
 `deployment/render.yaml` is a Render Blueprint for the API (rootDir `src/server`, health check
-`/api/health`, `FORCE_HTTPS=true`, `TRUST_PROXY=1`, `generateValue` for `JWT_SECRET` and the seed
-passwords) with MongoDB Atlas as `MONGODB_URI`. `src/client/vercel.json` deploys the SPA with an
+`/api/health`, `FORCE_HTTPS=true`, `TRUST_PROXY=1`, `generateValue` for `JWT_SECRET`, plus
+`ADMIN_EMAIL` for the first administrator and an email transport) with MongoDB Atlas as
+`MONGODB_URI`. `src/client/vercel.json` deploys the SPA with an
 SPA rewrite that excludes `/api`, plus cache and security headers. Step-by-step instructions,
 the full environment-variable table, a secrets-never-in-browser verification (`grep`) and a
 post-deploy checklist live in `deployment/README.md`.
@@ -244,6 +264,20 @@ post-deploy checklist live in `deployment/README.md`.
 Configuration precedence is unchanged: `src/server/config/env.js` is the **only** module that
 reads `process.env`. It fails fast in production when `MONGODB_URI` is missing, `JWT_SECRET` is
 shorter than 32 characters or looks like a placeholder, or `CLIENT_URL` is unset.
+
+It also pins the environment file to an **absolute** path (`src/server/.env`) instead of letting
+dotenv resolve `.env` against `process.cwd()`. That mattered here: the repository briefly held a
+second `.env` at the root with a different `MONGODB_URI` and `JWT_SECRET`, so the API and any
+tool run from the repository root read different configurations — the classic "my settings are
+being ignored" bug. A competing `.env` higher up is now reported at boot rather than silently
+skipped. Tests set `NODE_ENV=test` before loading any application module and skip the file
+entirely, so a developer's real credentials can never change what the suite exercises.
+
+Secrets live only in `src/server/.env`, which is git-ignored (`git ls-files | grep '\.env$'`
+returns nothing). The `#` character is worth avoiding in `ADMIN_PASSWORD`: dotenv reads it as the
+start of a comment and silently truncates the value, so the operator would be locked out with a
+password that looks correct in the file. `create-admin` now detects exactly that mismatch and
+refuses to continue, and its generated alphabet excludes `#`, `=`, `:`, `$` and quotes.
 
 ## 14. Launch Checklist — Production Hardening
 

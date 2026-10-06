@@ -23,6 +23,8 @@
  *   --quiet               print only the generated password (for scripting)
  */
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const { connectDB, disconnectDB } = require('../config/db');
@@ -53,7 +55,11 @@ function generatePassword() {
   const lower = 'abcdefghijkmnpqrstuvwxyz';
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const digits = '23456789';
-  const symbols = '!@#$%^&*-_=+';
+  // Deliberately excludes the characters that are special in a .env file or a
+  // shell assignment: '#' (dotenv reads it as the start of a comment and
+  // silently truncates the value), '=' and ':' (separators), '$', quotes and
+  // backslash. A generated password must survive being written to .env verbatim.
+  const symbols = '!@%^&*+-_';
   const all = lower + upper + digits + symbols;
   const pick = (set) => set[crypto.randomInt(0, set.length)];
 
@@ -65,6 +71,25 @@ function generatePassword() {
     [chars[i], chars[j]] = [chars[j], chars[i]];
   }
   return chars.join('');
+}
+
+/**
+ * Detect the .env trap: a raw value in .env that does not match what dotenv
+ * actually handed us. This happens when the value contains '#' (dotenv treats
+ * it as an inline comment) or quotes, and it would lock the operator out with a
+ * password that looks correct in the file.
+ *
+ * @returns {string|null} the raw file value when it differs, else null.
+ */
+function detectEnvTruncation(loaded) {
+  const envPath = path.join(__dirname, '..', '.env');
+  if (!loaded || !fs.existsSync(envPath)) return null;
+  const line = fs.readFileSync(envPath, 'utf8')
+    .split(/\r?\n/)
+    .find((l) => l.startsWith('ADMIN_PASSWORD='));
+  if (!line) return null;
+  const raw = line.slice('ADMIN_PASSWORD='.length);
+  return raw === loaded ? null : raw;
 }
 
 /** Reject a password the API's own policy would refuse. */
@@ -115,6 +140,19 @@ async function main() {
 
   const existing = await User.findOne({ email }).select('+passwordHash');
   const supplied = arg('password', process.env.ADMIN_PASSWORD || '');
+
+  // Refuse to set a password that .env cannot represent faithfully.
+  const rawInFile = detectEnvTruncation(supplied);
+  if (rawInFile) {
+    console.error(
+      `ADMIN_PASSWORD in src/server/.env is ${rawInFile.length} characters, but only ` +
+        `${supplied.length} reached this process. dotenv treats '#' as the start of a comment\n` +
+        "  (and ':' / quotes are also unsafe), so the stored password would not match the one you typed.\n" +
+        '  Fix: use a password without #, :, " or \' characters, or quote the whole value.'
+    );
+    await disconnectDB();
+    process.exit(1);
+  }
   const generated = supplied ? '' : generatePassword();
   const password = supplied || generated;
 
@@ -144,7 +182,12 @@ async function main() {
     existing.emailVerified = true;
     existing.failedLoginAttempts = 0;
     existing.lockedUntil = null;
-    if (existing.revokeTokens) existing.revokeTokens();
+    // Invalidate every session issued before the reset — including one opened
+    // by whoever knew the old password. tokenVersion is bumped directly rather
+    // than via revokeTokens(), which saves the document itself and would race
+    // the single save() below ("Can't save() the same doc multiple times in
+    // parallel").
+    existing.tokenVersion = (existing.tokenVersion || 0) + 1;
     await existing.save();
     action = 'ADMIN_PASSWORD_RESET_BY_OPERATOR';
   } else {

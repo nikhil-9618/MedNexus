@@ -18,8 +18,8 @@ export default function PrivacyPage() {
         <div className="card p-6">
           <h2 className="font-bold text-slate-900">2. What the platform stores</h2>
           <p className="mt-2">
-            For demo accounts: a name, email, phone, date of birth, gender and an encrypted
-            password. Appointments store the date, time, reason and status. Consultations store
+            For every account: a name, email, phone, date of birth, gender and a bcrypt-hashed
+            password (never plaintext). Appointments store the date, time, reason and status. Consultations store
             vitals, diagnosis and notes. Prescriptions and lab orders store the items a doctor
             recorded for that visit.
           </p>
