@@ -775,3 +775,119 @@ Actions Taken:
 * Built the client (BUILD_EXIT=0) and re-walked the recovery journey in the browser
 * Updated APPROACH.md with section 20 and committed the turn
 [2026-10-06T11:36:00+05:30] The turn log entry above was itself committed as d5a3ccf; the code and APPROACH.md change it describes is commit acc5052. Render this turn's addendum unnecessary: both SHAs are real and verified against git log.
+
+================================================================================
+[2026-10-06T13:13:40+05:30] Deliver the mail to real inboxes, generate JWT, remove every demo account
+================================================================================
+User Prompt (verbatim):
+deliver the mail to respected mail ids
+
+generate jwt token and all requirements that are required in project remove demo accounts
+Agent Response:
+Two separate asks, both carried through end to end. (1) Mail delivery: the OTP flow already
+called deliver(), but no provider was wired, so codes only reached the server console. Added
+src/server/services/email.service.js with two transports, auto-selected: Resend over the global
+fetch API (no new dependency) and SMTP via nodemailer@10.0.15 to reach arbitrary recipients
+without owning a verified domain. deliver() still degrades to the console transport on any
+failure and registration never fails on a mail error. server.js now logs which transport will be
+used and whether it verifies. Resend without EMAIL_FROM falls back to the onboarding@resend.dev
+sandbox, which only delivers to the account owner - warned at boot. (2) Credentials and demo
+accounts: created src/server/scripts/create-admin.js (npm run create-admin) to create or promote
+the first admin, idempotent on password reset, bumping tokenVersion directly because calling
+revokeTokens() raced and produced MongoNotConnectedError. server.js also bootstraps an admin from
+ADMIN_EMAIL/ADMIN_PASSWORD when the collection is empty - create-only, never resets, so a hosted
+instance needs no shell. Every seeded account is gone: seed/data.js is reference data only
+(departments + settings), the login page demo panel is deleted, the landing CTA is now "Sign in",
+and Privacy/Terms/deployment docs all reference ADMIN_* instead of seed passwords. A 48-byte
+JWT_SECRET and a 22-char ADMIN_PASSWORD were generated into the git-ignored src/server/.env.
+Agent Response Summary:
+Wired real email delivery (Resend preferred, SMTP for arbitrary recipients, console fallback) and
+removed the entire seeded-account surface so the platform has no shared demo credentials. Added a
+create-admin CLI plus a create-only admin bootstrap so a hosted deployment can be provisioned
+without shell access, and generated fresh JWT/admin secrets into the ignored env file. Two latent
+bug fixes rode along: seedIfEmpty() keyed off User.countDocuments and would have re-seeded forever
+now that no accounts are seeded, and the seed no longer clears the Counter collection so patient
+IDs stay monotonic.
+Commit SHA:
+f0ba35b (demo-account removal + create-admin CLI + render/tests), 605d601 and 3260769 ("Add an
+SMTP transport so codes can reach any recipient", src/server/package-lock.json + root
+package-lock.json), 5e2b90a ("Pin the env file, harden the admin bootstrap, and drop the demo copy")
+Files Modified / Created:
+* src/server/services/email.service.js (Created)
+* src/server/scripts/create-admin.js (Created)
+* src/server/config/env.js (Modified)
+* src/server/config/db.js (Modified)
+* src/server/server.js (Modified)
+* src/server/seed/seed.js (Modified)
+* src/server/seed/data.js (Modified)
+* src/server/package.json (Modified)
+* src/server/package-lock.json (Modified)
+* src/server/.env (Created, git-ignored - never committed)
+* src/server/.env.example (Modified)
+* src/server/tests/helpers.js (Modified)
+* src/server/tests/api.test.js (Modified)
+* src/server/tests/security-checklist.js (Modified)
+* src/client/src/pages/auth/LoginPage.jsx (Modified)
+* src/client/src/pages/public/LandingPage.jsx (Modified)
+* src/client/src/pages/public/PrivacyPage.jsx (Modified)
+* deployment/render.yaml (Modified)
+* deployment/README.md (Modified)
+* deployment/docker-compose.yml (Modified)
+* deployment/.env.production.example (Modified)
+* docs/APPROACH.md (Modified)
+* package-lock.json (Modified)
+Actions Taken:
+* Added the Resend and SMTP transports and a boot-time transport report
+* Verified the transport against a stubbed fetch (5/5) and against a live in-process SMTP sink that
+  received a real message carrying the code (8/8)
+* Confirmed production mode leaks no OTP with OTP_DEV_ECHO off (5/5) and still works with it on (5/5)
+* Booted an API, proved all three demo logins now 401, then ran the full journey: bootstrap admin ->
+  provision doctor -> doctor signs in -> patient registers and verifies -> books -> doctor sees it
+  (9/9)
+* Ran npm test (33/33, TEST_EXIT=0) and tests/security-checklist.js (15/15, CHECKLIST_EXIT=0)
+* Diagnosed and fixed a broken npm ci at the repo root (the standalone src/server install had never
+  updated the root lockfile)
+* Measured Atlas connectivity directly and recorded the TLS alert 80 failure rather than assuming
+* Corrected the two .env resolution hazard: env.js now pins the file to an absolute path
+
+================================================================================
+[2026-10-06T13:13:40+05:30] Deploy the client to Netlify: verified static config and artifact
+================================================================================
+User Prompt (verbatim):
+deploy it in netlify
+Agent Response:
+The deploy itself cannot be performed from this machine: there is no netlify CLI on PATH, no
+NETLIFY_AUTH_TOKEN in the environment, and no ~/.netlify credential store, so nothing here can
+authenticate to a Netlify account. Two things were done instead. First, the repository is now
+deploy-ready and provably so: netlify.toml at the repo root pins the workspace build
+(npm ci --omit=optional && npm run build --workspace mednexus-client), publishes src/client/dist,
+sets NODE_VERSION 22, orders the /assets/* 404 rule before the /* SPA fallback, and mirrors the
+security headers already in src/client/vercel.json. Second, the artifact itself was rebuilt and
+re-audited. Note the one genuine trap: Vite inlines VITE_API_URL at build time, so it must be set
+as a Netlify environment variable before the build and changing it requires a redeploy. Without it
+the app calls same-origin /api, which Netlify cannot serve, so api.js now reports an actionable
+message instead of axios's bare "Network Error". The API is a separate Node service and is not
+deployed by this config.
+Agent Response Summary:
+Wrote and verified a Netlify configuration for the static front end, rebuilt the client so the new
+error-path change is inside the published bundle, and re-ran both Netlify verifiers against the
+fresh artifact (34/34 config checks, 26/26 artifact checks). Committed the root lockfile fix that
+npm ci on Netlify depends on. The publish step itself is blocked on the team's Netlify account -
+it must be done through the Netlify UI or with a token the user supplies.
+Commit SHA:
+91fbf03 (the code); this log entry is its own documentation commit
+Files Modified / Created:
+* netlify.toml (Created)
+* src/client/src/services/api.js (Modified)
+* package-lock.json (Modified)
+* src/client/dist (Rebuilt, git-ignored)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Confirmed no Netlify CLI, token or credential store exists on this machine
+* Rebuilt the client with VITE_API_URL inlined (BUILD_EXIT=0, entry index-BLv-bEq-.js)
+* Re-ran python .freebuff/verify-netlify-config.py (34 PASS / 0 FAIL)
+* Re-ran python .freebuff/verify-netlify-artifact.py (26 PASS / 0 FAIL), including the missing-asset
+  404 rule, the CSP, the shell cache policy and the inlined API URL
+* Proved the root lockfile change is exactly one added package (nodemailer 10.0.15) and that
+  npm ci --omit=optional now resolves cleanly (CI_DRYRUN_EXIT=0)
+* Opened the deploy step as a question for the team because it needs their Netlify credentials
