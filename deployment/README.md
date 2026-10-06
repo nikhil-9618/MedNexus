@@ -140,7 +140,9 @@ development. The essentials:
 | `TRUST_PROXY` | API | `1` behind nginx/Render so rate limiting sees the real IP |
 | `FORCE_HTTPS` | API | Defaults to `true` in production |
 | `BCRYPT_ROUNDS` | API | `12` in production |
-| `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api` |
+| `SEED_ON_EMPTY` | API | `true` lets a hosted instance seed the synthetic demo data itself, because it has no shell to run `npm run seed` in. Off by default; only writes while the database is empty |
+| `OTP_DEV_ECHO` | API | `true` returns the email-verification code to the client. Required for this deploy to be usable, because no email provider is configured. **Leave it off anywhere real patient data could appear** |
+| `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api`. On Vercel set this to `https://<render-service>.onrender.com/api`, otherwise the SPA's requests go to the Vercel origin and 404 |
 | `VITE_ANALYTICS_DOMAIN` | Web (build) | Optional; unset disables analytics entirely |
 
 ### Secrets never reach the browser

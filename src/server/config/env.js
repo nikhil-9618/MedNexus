@@ -94,6 +94,16 @@ const config = {
   bodyLimit: process.env.BODY_LIMIT || '32kb',
 
   logRequests: bool(process.env.LOG_REQUESTS, !isTest),
+
+  // ---- Demo-deployment switches (both default OFF) ------------------------
+  // Seeding is a development convenience by default; a hosted demo has no
+  // developer shell to run `npm run seed` in, so it can opt in explicitly.
+  seedOnEmpty: bool(process.env.SEED_ON_EMPTY, false),
+
+  // With no email provider configured, an OTP can never be delivered. This
+  // switch lets a hosted DEMO echo the code to the client so the registration
+  // flow stays completable. It must stay off for any real patient data.
+  otpEcho: bool(process.env.OTP_DEV_ECHO, false),
 };
 
 /** Fail fast in production when a required secret is missing. */
@@ -107,6 +117,12 @@ function validateProductionConfig() {
       problems.push('JWT_SECRET still equals the .env.example placeholder');
     }
     if (config.clientUrls.length === 0) problems.push('CLIENT_URL is required in production');
+    if (config.otpEcho) {
+      console.warn(
+        '[security] OTP_DEV_ECHO is ON — verification codes are returned to the client ' +
+          'because no email provider is configured. Demo/synthetic data only.'
+      );
+    }
   } else if (!config.jwt.secret) {
     // Development fallback so the app boots with zero setup. Never used in prod.
     config.jwt.secret = 'mednexus-dev-only-secret-do-not-use-in-production-0123456789';

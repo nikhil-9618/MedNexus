@@ -38,6 +38,14 @@ services:
         value: "true"
       - key: BCRYPT_ROUNDS
         value: "12"
+      # Demo conveniences for this hosted instance (synthetic data only):
+      # seed the empty database on first boot, and echo OTP codes to the
+      # client because no email provider is configured. Leave OTP_DEV_ECHO
+      # unset for any deployment that touches real patient data.
+      - key: SEED_ON_EMPTY
+        value: "true"
+      - key: OTP_DEV_ECHO
+        value: "true"
       # Seeded demo accounts (synthetic data only) — override before first seed.
       - key: SEED_ADMIN_PASSWORD
         generateValue: true

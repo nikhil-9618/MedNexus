@@ -6,9 +6,10 @@
  *  - Only a bcrypt HASH of the code is stored; the plaintext never persists.
  *  - Codes expire after OTP_TTL_MS and are capped at MAX_ATTEMPTS attempts.
  *  - Delivery is pluggable. With no email provider configured the code is
- *    logged server-side (dev transport) and returned to the client ONLY when
- *    config.isDev is true, so the flow is testable without an SMTP account.
- *    In production `devCode` is never populated and nothing is returned.
+ *    logged server-side (dev transport) and returned to the client in
+ *    development, in tests, and on a hosted DEMO that explicitly sets
+ *    OTP_DEV_ECHO=true (no shell to run the flow manually, no SMTP account).
+ *    Any deployment that leaves the switch off never returns a code.
  */
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
@@ -34,9 +35,10 @@ function generateCode() {
  * { delivered: true, devCode: null } once credentials exist.
  */
 async function deliver({ email, code, name }) {
+  const expose = config.isDev || config.isTest || config.otpEcho;
+  const transport = expose && config.isProd ? 'demo-console' : 'dev-console';
   console.log(`[otp] verification code for ${email} (${name}): ${code} — expires in 10 minutes`);
-  const expose = config.isDev || config.isTest;
-  return { delivered: false, transport: 'dev-console', devCode: expose ? code : null };
+  return { delivered: false, transport, devCode: expose ? code : null };
 }
 
 /** Issue (or re-issue) a verification code for a user. */
