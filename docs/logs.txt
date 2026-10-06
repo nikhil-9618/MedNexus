@@ -1099,7 +1099,7 @@ Cleaned the workspace to a minimal and pristine state matching AGENTS.md §6: (1
 Agent Response Summary:
 Removed duplicate root .env and temporary .freebuff directory. Verified all 33 server tests pass and frontend Vite production build succeeds.
 Commit SHA:
-<staged and committed below>
+e32dce2
 Files Modified / Created / Deleted:
 * .env (Deleted)
 * .freebuff (Deleted)
