@@ -251,15 +251,39 @@ admin console's operational Audit Logs tool; it is simply not product marketing.
 `nginx.conf` adds gzip, HSTS, a CSP with `upgrade-insecure-requests`, immutable caching for
 `/assets/` (hashed filenames) and `no-cache` for `index.html`.
 
-**B — Render + Vercel + Atlas (managed cloud)**
+**B — Render + Netlify + Atlas (managed cloud)**
 
 `deployment/render.yaml` is a Render Blueprint for the API (rootDir `src/server`, health check
 `/api/health`, `FORCE_HTTPS=true`, `TRUST_PROXY=1`, `generateValue` for `JWT_SECRET`, plus
-`ADMIN_EMAIL` for the first administrator and an email transport) with MongoDB Atlas as
-`MONGODB_URI`. `src/client/vercel.json` deploys the SPA with an
-SPA rewrite that excludes `/api`, plus cache and security headers. Step-by-step instructions,
-the full environment-variable table, a secrets-never-in-browser verification (`grep`) and a
-post-deploy checklist live in `deployment/README.md`.
+`ADMIN_EMAIL` for the first administrator and either the Resend or the SMTP email transport)
+with MongoDB Atlas as `MONGODB_URI`.
+
+The web bundle goes to **Netlify** from the repository-root `netlify.toml`, so the dashboard
+needs no build settings at all: the workspace build, `publish = "src/client/dist"` and
+`NODE_VERSION=22` are all committed. Two details in it are load-bearing. The `/assets/*`
+rewrite to a 404 is ordered **before** the `/*` → `/index.html` fallback, because Netlify serves
+real files first and applies the first matching redirect after that — without the ordering a
+stale shell asking for a deleted hashed bundle would receive `index.html` with a 200 and the
+browser would report `Unexpected token '<'` instead of a clean 404. And `VITE_API_URL` is
+inlined by Vite **at build time**, so it is a Netlify environment variable that must exist
+before the first build and forces a redeploy when changed; `netlify.toml`'s
+`Content-Security-Policy` `connect-src` must name the same API origin. `src/client/vercel.json`
+remains a byte-equivalent alternative for Vercel. Step-by-step instructions, the full
+environment-variable table, a secrets-never-in-browser verification (`grep`) and a post-deploy
+checklist live in `deployment/README.md`.
+
+Both halves of this path were exercised against the real cluster rather than assumed: the API
+booted with the Atlas `MONGODB_URI`, seeded its reference data, bootstrapped exactly one
+administrator, issued an OTP challenge on registration, refused login with
+`403 EMAIL_NOT_VERIFIED` until the code was entered, and stored that code as a bcrypt hash.
+
+One credential-exposure bug was found while doing it. `config/db.js` logged the connection
+string verbatim — `[db] Connected to MongoDB at mongodb+srv://user:password@host/...` — and on a
+hosted platform stdout is a retained, widely readable log stream, so every boot published the
+cluster password. The log line now passes through a `redactUri()` helper that replaces the
+userinfo segment with `<credentials>`, keeping the host, database and options that are actually
+useful for diagnosis. A regression check asserts the password never appears in the process
+output.
 
 Configuration precedence is unchanged: `src/server/config/env.js` is the **only** module that
 reads `process.env`. It fails fast in production when `MONGODB_URI` is missing, `JWT_SECRET` is

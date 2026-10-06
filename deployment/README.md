@@ -5,7 +5,7 @@ build; none of them puts a secret in the browser bundle.
 
 | Layer | Local (Docker) | Cloud (recommended) |
 |---|---|---|
-| Frontend | nginx container | **Vercel** — `src/client` |
+| Frontend | nginx container | **Netlify** — `src/client` (see `netlify.toml`; Vercel also works) |
 | Backend | Node 20 container | **Render** — `src/server` |
 | Database | `mongo:7` container + volume | **MongoDB Atlas** |
 
@@ -71,7 +71,7 @@ docker compose -f deployment/docker-compose.yml down -v       # wipe the databas
 
 ---
 
-## 2 · Cloud deployment (Render + Vercel + Atlas)
+## 2 · Cloud deployment (Render + Netlify + Atlas)
 
 ### 2.1 Database — MongoDB Atlas
 
@@ -100,10 +100,61 @@ docker compose -f deployment/docker-compose.yml down -v       # wipe the databas
    `src/server`, build `npm install --omit=dev --omit=optional`, start
    `node server.js`.
 
-4. From the Render shell, once: `npm run create-admin` (reference data is
-   written automatically on first boot when `SEED_ON_EMPTY=true`).
+4. The first administrator is created from the `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+   you supplied above: `server.js` bootstraps one whenever the collection is
+   empty, **create-only, never resetting an existing password**, so a hosted
+   instance needs no shell. Reference data (departments and settings — no
+   accounts) is written automatically on first boot when `SEED_ON_EMPTY=true`.
+   To rotate the password later, use the Render shell: `npm run create-admin --
+   --email you@your-clinic.example --password '<new>'`.
 
-### 2.3 Web — Vercel
+### 2.3 Web — Netlify (recommended)
+
+The repository ships a `netlify.toml`, so the site needs **no dashboard build
+settings at all**.
+
+1. Netlify → **Add new site → Import an existing project** → GitHub →
+   `nikhil-9618/MedNexus`.
+2. Leave **Base directory** *empty* and change nothing else. `netlify.toml`
+   already pins the build
+   (`npm ci --no-audit --no-fund --omit=optional && npm run build --workspace
+   mednexus-client`), the publish directory (`src/client/dist`) and
+   `NODE_VERSION=22`.
+3. **Site configuration → Environment variables**: add
+
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_URL` | `https://<your-api>.onrender.com/api` |
+
+4. Deploy. Then set the resulting `https://<site>.netlify.app` origin as
+   `CLIENT_URL` on Render and redeploy the API so CORS admits it.
+
+**`VITE_API_URL` is inlined by Vite at build time.** Editing it after a deploy
+has no effect on the already-published bundle — you must redeploy
+(*Deploys → Trigger deploy → Clear cache and deploy site*). With it unset the
+bundle calls same-origin `/api`, which Netlify cannot serve, and every sign-in
+fails with *"Cannot reach the MedNexus service"*.
+
+`netlify.toml` mirrors `src/client/vercel.json`: a first-matching
+`/assets/* → 404` rule, so a stale shell asking for a deleted bundle fails
+loudly instead of being answered with HTML (`Unexpected token '<'`), then
+`/* → /index.html` (200) for client-side routes, plus the same security
+headers and cache policy. Its `Content-Security-Policy` `connect-src` already
+allows `https://*.onrender.com`; **any other API origin must be added to that
+line too**, in addition to `CLIENT_URL` on the API.
+
+The two deployment paths were checked against Netlify's file-first,
+then-first-matching-redirect serving semantics: deep links such as
+`/admin/digital-twin` and `/verify-email` return the app shell, a missing
+`/assets/*.js` returns 404 rather than HTML, and the built bundle carries no
+`localhost` API address.
+
+Prefer drag-and-drop? Build once with
+`npm run build --workspace mednexus-client` and drop `src/client/dist` on
+app.netlify.com/drop. That needs neither a git connection nor an account link,
+but every later change requires a manual re-drop.
+
+### 2.4 Web — Vercel (alternative)
 
 1. Vercel → **New Project** → same repository.
 2. **Root directory: `src/client`** (framework preset `Vite`, output `dist`).
@@ -149,9 +200,10 @@ development. The essentials:
 | `TRUST_PROXY` | API | `1` behind nginx/Render so rate limiting sees the real IP |
 | `FORCE_HTTPS` | API | Defaults to `true` in production |
 | `BCRYPT_ROUNDS` | API | `12` in production |
-| `SEED_ON_EMPTY` | API | `true` lets a hosted instance seed the synthetic demo data itself, because it has no shell to run `npm run seed` in. Off by default; only writes while the database is empty |
-| `OTP_DEV_ECHO` | API | `true` returns the email-verification code to the client. Required for this deploy to be usable, because no email provider is configured. **Leave it off anywhere real patient data could appear** |
-| `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api`. On Vercel set this to `https://<render-service>.onrender.com/api`, otherwise the SPA's requests go to the Vercel origin and 404 |
+| `SEED_ON_EMPTY` | API | `true` lets a hosted instance write the reference data (departments and settings — **no accounts**) itself, because it has no shell to run `npm run seed` in. Off by default; only writes while the database has no departments |
+| `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` | API | Bootstrap the first administrator on an empty database. Create-only: an existing account is never modified, so this cannot reset a live password |
+| `OTP_DEV_ECHO` | API | `true` returns the email-verification code to the client. Only needed when no email provider is configured; it makes signup verification cosmetic. **Leave it off anywhere real patient data could appear** |
+| `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api`. Set it to `https://<render-service>.onrender.com/api` on Netlify *and* Vercel, otherwise the SPA's requests go to the static host's own origin and 404. Inlined at build time — changing it requires a redeploy |
 
 **Why the API build says `--workspaces=false`.** This repository uses npm workspaces
 (`src/client` and `src/server`). Running a plain `npm install` with the working directory set to
@@ -164,9 +216,12 @@ other lock file in the repository is the root workspace one.
 
 Before the cloud path was recommended, this was verified end to end: a copy of `src/server` was
 installed in an empty directory away from the workspace root using exactly the command above,
-then booted with `NODE_ENV=production`. It served `/api/health`, seeded its own demo data,
-signed in a demo patient, served an authenticated request through the new token-revocation check,
-and still refused a patient on an admin route (403).
+then booted with `NODE_ENV=production`. It served `/api/health`, wrote its own reference data,
+bootstrapped an administrator, served an authenticated request through the new token-revocation
+check, and still refused a patient on an admin route (403).
+
+| Variable | Where | Notes |
+|---|---|---|
 | `VITE_ANALYTICS_DOMAIN` | Web (build) | Optional; unset disables analytics entirely |
 
 ### Secrets never reach the browser
@@ -188,10 +243,16 @@ grep -roE "(JWT_SECRET|MONGODB_URI|BCRYPT_ROUNDS|SEED_[A-Z_]+)" src/client/src s
 
 - [ ] `GET /api/health` returns `{"status":"ok","service":"MedNexus API"}`
 - [ ] Registration returns an OTP challenge, and login is refused (403) until verified
-- [ ] Seeded patient/doctor/admin logins work
+- [ ] **No account is seeded**: the three former demo logins
+      (`patient@mednexus.demo`, `doctor@mednexus.demo`, `admin@mednexus.demo`) all return 401.
+      The only way in is the administrator from `ADMIN_EMAIL`/`ADMIN_PASSWORD`, who then
+      provisions doctors from Admin → Manage Doctors
+- [ ] Signing in from the deployed Netlify origin works, which proves `VITE_API_URL` was baked
+      in **and** that origin is in the API's `CLIENT_URL`
 - [ ] `/api/admin/digital-twin` returns 403 for patient and doctor tokens
 - [ ] HTTPS serves the site; plain HTTP redirects
 - [ ] `Strict-Transport-Security`, `Content-Security-Policy` and
-      `X-Frame-Options` are present on responses
+      `X-Frame-Options` are present on responses, and the CSP's `connect-src` names the API origin
+- [ ] A missing `/assets/<hash>.js` returns 404, not the HTML shell
 - [ ] `/robots.txt` and `/sitemap.xml` resolve
 - [ ] A deep link such as `/terms` renders the app rather than a 404

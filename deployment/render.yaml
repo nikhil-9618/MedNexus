@@ -43,21 +43,37 @@ services:
         value: "true"
       - key: BCRYPT_ROUNDS
         value: "12"
-      # Real email delivery for signup verification codes. Paste a Resend key
-      # (https://resend.com/api-keys) and a sender on a domain verified there.
-      # Without these, no patient can complete signup unless OTP_DEV_ECHO is on.
+      # Real email delivery for signup verification codes. Configure ONE of the
+      # two transports below, or no patient can ever complete signup. The API
+      # reports which one it chose on boot. Without either, set OTP_DEV_ECHO.
+      #
+      # (a) Resend — needs a domain verified at resend.com, because its shared
+      #     sender only delivers to the Resend account owner.
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false # MedNexus <no-reply@your-verified-domain>
-      # Demo conveniences for this hosted instance (synthetic data only):
-      # seed the empty database on first boot. OTP_DEV_ECHO is a fallback for
-      # when RESEND_API_KEY is left empty — it echoes codes to the client, so
-      # leave it unset for any deployment that touches real patient data.
+      # (b) SMTP — works with any provider, and is the only option that reaches
+      #     arbitrary recipients without owning a verified domain (e.g. a Gmail
+      #     account with a 16-character app password, smtp.gmail.com:587).
+      #     Set SMTP_HOST, SMTP_USER and SMTP_PASS to enable it; SMTP_PORT
+      #     defaults to 587 with STARTTLS.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      # Reference data (departments and settings — NO accounts) is written on
+      # first boot. The first administrator comes from ADMIN_* below.
       - key: SEED_ON_EMPTY
         value: "true"
+      # Escape hatch, not a feature: echoes the verification code back to the
+      # client over HTTP. Type "true" ONLY if you skipped both transports above
+      # and still need signup to be walkable; it makes email verification
+      # cosmetic, so leave it blank for anything real.
       - key: OTP_DEV_ECHO
-        value: "true"
+        sync: false
       # The first administrator. No accounts are seeded, so without this the
       # deployment has nobody who can sign in. Run once, in the Render shell:
       #   npm run create-admin

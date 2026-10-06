@@ -20,12 +20,24 @@ const DATA_DIR = path.resolve(__dirname, '..', '.data', 'mongodb');
 
 let memoryServer = null;
 
+/**
+ * Describe a connection string for a log line without ever printing its
+ * credentials. A production URI carries the database password, and stdout on a
+ * hosted platform is a retained, widely readable log stream, so logging
+ * `config.mongo.uri` verbatim publishes the cluster password on every boot.
+ * Host, database name and options are all still shown, which is what is
+ * actually useful for diagnosing a failed connection.
+ */
+function redactUri(uri) {
+  return String(uri).replace(/\/\/[^@/]*@/, '//<credentials>@');
+}
+
 async function connectDB() {
   if (mongoose.connection.readyState === 1) return mongoose.connection;
 
   if (config.mongo.uri) {
     await mongoose.connect(config.mongo.uri, { dbName: config.mongo.dbName });
-    console.log(`[db] Connected to MongoDB at ${config.mongo.uri}`);
+    console.log(`[db] Connected to MongoDB at ${redactUri(config.mongo.uri)}`);
     return mongoose.connection;
   }
 
