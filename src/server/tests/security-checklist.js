@@ -12,12 +12,16 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'checklist-secret-0123456789abcdef0123456789';
 
 const http = require('node:http');
-const { connectDB, disconnectDB } = require('../config/db');
 const { buildApp } = require('../app');
+const fixtures = require('./helpers');
 
 const BASE = process.env.BASE_URL || null;
 let server = null;
 let base = BASE;
+
+// Credentials for every patient this script creates, so the leak check can log
+// in as one of its own accounts rather than depending on seeded data.
+const registeredPatients = [];
 
 async function api(method, path, { token, body } = {}) {
   return new Promise((resolve, reject) => {
@@ -48,6 +52,24 @@ async function api(method, path, { token, body } = {}) {
   });
 }
 
+/** Register a patient through the real signup + OTP flow. */
+async function registerPatient(name) {
+  const email = `checklist.${Date.now()}.${Math.floor(Math.random() * 10000)}@example.demo`;
+  const password = 'Str0ngPass!9';
+  const reg = await api('POST', '/api/auth/register', {
+    body: {
+      name, email, password, confirmPassword: password,
+      phone: '+1-555-7777', dob: '1991-03-03', gender: 'Other',
+    },
+  });
+  expect(reg.status === 201, `patient registration failed: ${reg.text}`);
+  expect(!!reg.body.devOtp, 'test transport did not surface the OTP');
+  const verified = await api('POST', '/api/auth/verify-otp', { body: { email, otp: reg.body.devOtp } });
+  expect(verified.status === 200, `otp verification failed: ${verified.text}`);
+  registeredPatients.push({ email, password });
+  return verified.body.token;
+}
+
 let pass = 0;
 let fail = 0;
 
@@ -67,43 +89,60 @@ function expect(cond, msg) {
 }
 
 (async () => {
+  let adminEmail;
+  let adminPassword;
+  let doctorEmail;
+  let doctorPassword;
+
   if (!BASE) {
-    await connectDB();
-    // Seed when the ephemeral DB is empty so demo logins work.
-    const User = require('../models/User');
-    if ((await User.countDocuments({})) === 0) {
-      const { main: seed } = require('../seed/seed');
-      await seed(true);
-    }
+    // Ephemeral DB with reference data plus fixture accounts. The doctor is
+    // created through the real admin service, so it has bookable availability.
+    await fixtures.startDB();
+    adminEmail = fixtures.TEST_ADMIN.email;
+    adminPassword = fixtures.TEST_ADMIN.password;
+    doctorEmail = fixtures.TEST_DOCTOR.email;
+    doctorPassword = fixtures.TEST_DOCTOR.password;
+
     const app = buildApp();
     server = app.listen(0);
     await new Promise((r) => server.on('listening', r));
     base = `http://127.0.0.1:${server.address().port}`;
     console.log(`[checklist] ephemeral server on ${base}`);
   } else {
+    // Against an external server the accounts must be supplied: no accounts are
+    // seeded any more, so there are no built-in logins to fall back on.
+    adminEmail = process.env.CHECKLIST_ADMIN_EMAIL || '';
+    adminPassword = process.env.CHECKLIST_ADMIN_PASSWORD || '';
+    doctorEmail = process.env.CHECKLIST_DOCTOR_EMAIL || '';
+    doctorPassword = process.env.CHECKLIST_DOCTOR_PASSWORD || '';
+    if (!adminEmail || !adminPassword || !doctorEmail || !doctorPassword) {
+      console.error(
+        '[checklist] With BASE_URL set, provide CHECKLIST_ADMIN_EMAIL, CHECKLIST_ADMIN_PASSWORD, ' +
+          'CHECKLIST_DOCTOR_EMAIL and CHECKLIST_DOCTOR_PASSWORD.\n' +
+          '            Create the admin with `npm run create-admin`, and a doctor from Admin → Manage Doctors.'
+      );
+      process.exit(1);
+    }
     console.log(`[checklist] external server ${base}`);
   }
 
-  // Seed data must exist for the checklist (it logs in demo accounts).
-  const adminLogin = await api('POST', '/api/auth/login', { body: { email: 'admin@mednexus.demo', password: process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026', role: 'ADMIN' } });
-  expect(adminLogin.status === 200, 'admin login failed — run `npm run seed` first');
+  const adminLogin = await api('POST', '/api/auth/login', { body: { email: adminEmail, password: adminPassword, role: 'ADMIN' } });
+  expect(adminLogin.status === 200, 'admin login failed — create one with `npm run create-admin`');
   const admin = adminLogin.body.token;
 
-  const patientLogin = await api('POST', '/api/auth/login', { body: { email: 'patient@mednexus.demo', password: process.env.SEED_PATIENT_PASSWORD || 'Patient@MedNexus2026', role: 'PATIENT' } });
-  expect(patientLogin.status === 200, 'patient login failed — run `npm run seed` first');
-  const patient = patientLogin.body.token;
-
-  const doctorLogin = await api('POST', '/api/auth/login', { body: { email: 'doctor@mednexus.demo', password: process.env.SEED_DOCTOR_PASSWORD || 'Doctor@MedNexus2026', role: 'DOCTOR' } });
-  expect(doctorLogin.status === 200, 'doctor login failed — run `npm run seed` first');
+  const doctorLogin = await api('POST', '/api/auth/login', { body: { email: doctorEmail, password: doctorPassword, role: 'DOCTOR' } });
+  expect(doctorLogin.status === 200, 'doctor login failed — provision one from Admin → Manage Doctors');
   const doctor = doctorLogin.body.token;
 
-  // --- Second patient for cross-patient isolation tests ---
-  const emailB = `rbac.b-${Date.now()}@example.demo`;
-  const regB = await api('POST', '/api/auth/register', { body: { name: 'RBAC B', email: emailB, password: 'Str0ngPass!9', confirmPassword: 'Str0ngPass!9', phone: '+1-555-7777', dob: '1991-03-03', gender: 'Male' } });
-  // Registration now returns an OTP challenge instead of a session. The
-  // dev/test transport surfaces the code so the checklist can complete it.
-  const verifyB = await api('POST', '/api/auth/verify-otp', { body: { email: emailB, otp: regB.body.devOtp } });
-  const patientB = verifyB.body.token;
+  // Both patients are created through the public signup flow, so the checklist
+  // depends on no patient fixture at all.
+  const patient = await registerPatient('Checklist Patient A');
+  // A genuine sign-in with the credentials just created, not an assumed pass.
+  const patientLogin = await api('POST', '/api/auth/login', {
+    body: { email: registeredPatients[0].email, password: registeredPatients[0].password, role: 'PATIENT' },
+  });
+  expect(patientLogin.status === 200, `patient login failed: ${patientLogin.text}`);
+  const patientB = await registerPatient('Checklist Patient B');
   const meB = await api('GET', '/api/patients/me', { token: patientB });
   const patientBId = meB.body.patient.id;
 
@@ -119,7 +158,7 @@ function expect(cond, msg) {
   });
 
   await check('Invalid password rejected (401)', async () => {
-    const res = await api('POST', '/api/auth/login', { body: { email: 'patient@mednexus.demo', password: 'WrongPass!123' } });
+    const res = await api('POST', '/api/auth/login', { body: { email: registeredPatients[0].email, password: 'WrongPass!123' } });
     expect(res.status === 401, `got ${res.status}`);
   });
 
@@ -160,8 +199,8 @@ function expect(cond, msg) {
 
   await check('Duplicate appointment BLOCKED (409)', async () => {
     const docs = await api('GET', '/api/doctors');
-    const doc = docs.body.items.find((d) => d.email === 'doctor@mednexus.demo');
-    expect(!!doc, 'demo doctor not found');
+    const doc = docs.body.items.find((d) => d.email === doctorEmail);
+    expect(!!doc, 'fixture doctor not found in the directory');
     // find a free slot
     let date = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
     let avail = (await api('GET', `/api/doctors/${doc.id}/availability?date=${date}`)).body;
@@ -202,7 +241,7 @@ function expect(cond, msg) {
   });
 
   await check('No sensitive leaks in auth responses', async () => {
-    const res = await api('POST', '/api/auth/login', { body: { email: 'patient@mednexus.demo', password: process.env.SEED_PATIENT_PASSWORD || 'Patient@MedNexus2026' } });
+    const res = await api('POST', '/api/auth/login', { body: { email: registeredPatients[0].email, password: registeredPatients[0].password } });
     const raw = res.text;
     expect(!raw.includes('passwordHash'), 'passwordHash leaked');
     expect(!raw.includes('$2'), 'bcrypt hash leaked');
@@ -220,7 +259,7 @@ function expect(cond, msg) {
 
   if (server) {
     await new Promise((r) => server.close(r));
-    await disconnectDB();
+    await fixtures.stopDB();
   }
 })().catch((err) => {
   console.error('[checklist] fatal:', err);

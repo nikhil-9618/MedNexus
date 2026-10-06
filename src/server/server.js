@@ -7,23 +7,70 @@
 const { config, validateProductionConfig } = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/db');
 const { buildApp } = require('./app');
-const User = require('./models/User');
+const Department = require('./models/Department');
 
 /**
- * First-run convenience: seed synthetic demo data when the database is empty.
+ * Create the first administrator from ADMIN_EMAIL + ADMIN_PASSWORD, once.
+ *
+ * `npm run create-admin` is the documented way to do this, but the zero-setup
+ * local database is locked to a single process, so the command cannot run while
+ * the API holds it. Doing it here makes local setup work with no second process
+ * and lets a hosted instance bootstrap without a shell.
+ *
+ * Strictly create-only: an existing ADMIN is never touched, so a password can
+ * never be silently reset by a restart.
+ */
+async function bootstrapAdmin() {
+  const { adminEmail } = config;
+  const password = process.env.ADMIN_PASSWORD || '';
+  if (!adminEmail || !password) return;
+
+  const User = require('./models/User');
+  const existingAdmin = await User.findOne({ role: 'ADMIN' });
+  if (existingAdmin) return;
+
+  if (password.length < 12) {
+    console.warn('[security] ADMIN_PASSWORD is shorter than 12 characters — refusing to create the administrator.');
+    return;
+  }
+
+  const { writeAudit } = require('./services/audit.service');
+  await User.create({
+    name: process.env.ADMIN_NAME || 'Clinic Administrator',
+    email: adminEmail.toLowerCase(),
+    passwordHash: await User.hashPassword(password, config.bcrypt.rounds),
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    emailVerified: true,
+  });
+  await writeAudit({
+    role: 'SYSTEM',
+    action: 'ADMIN_BOOTSTRAPPED',
+    resourceType: 'AUTH',
+    resourceId: adminEmail,
+    result: 'SUCCESS',
+    detail: 'First administrator created at boot from ADMIN_EMAIL/ADMIN_PASSWORD',
+  });
+  console.log(`[api] created the first administrator: ${adminEmail}`);
+}
+
+/**
+ * First-run convenience: seed reference data (departments, settings) once.
  *
  * Development and test always do this. A hosted demo has no shell to run
- * `npm run seed` in, so it can opt in with SEED_ON_EMPTY=true — the seed only
- * runs while the database is empty and only writes synthetic records.
+ * `npm run seed` in, so it can opt in with SEED_ON_EMPTY=true.
+ *
+ * Emptiness is judged by a reference collection, never by User: no accounts are
+ * seeded any more, so counting users would stay at zero forever and re-run the
+ * seed on every single boot, wiping the departments it had just written.
  */
 async function seedIfEmpty() {
   if (!config.isDev && !config.isTest && !config.seedOnEmpty) return;
-  const count = await User.countDocuments({});
-  if (count === 0) {
-    console.log('[api] empty database — seeding synthetic demo data…');
+  const departments = await Department.countDocuments({});
+  if (departments === 0) {
+    console.log('[api] empty database — seeding reference data…');
     const { main: seed } = require('./seed/seed');
     await seed(true); // keepAlive: reuse this connection
-    if (config.isProd) console.warn('[security] seeded demo accounts — synthetic data only, never real patients');
   }
 }
 
@@ -53,6 +100,7 @@ async function main() {
 
   await connectDB();
   await seedIfEmpty();
+  await bootstrapAdmin();
 
   const app = buildApp();
   const server = app.listen(config.port, () => {

@@ -5,18 +5,12 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { apiError } from '../../services/api.js';
 import { homeForRole, PATHS } from '../../routes/paths.js';
 import { Loader } from '../../components/common/Loader.jsx';
-import { KeyRound, Mail, UserRound } from 'lucide-react';
+import { KeyRound, Mail } from 'lucide-react';
 
 const ROLES = [
   { value: 'PATIENT', label: 'Patient' },
   { value: 'DOCTOR', label: 'Doctor' },
   { value: 'ADMIN', label: 'Admin' },
-];
-
-const DEMO = [
-  { role: 'PATIENT', email: 'patient@mednexus.demo', password: 'Patient@MedNexus2026' },
-  { role: 'DOCTOR', email: 'doctor@mednexus.demo', password: 'Doctor@MedNexus2026' },
-  { role: 'ADMIN', email: 'admin@mednexus.demo', password: 'Admin@MedNexus2026' },
 ];
 
 export default function LoginPage() {
@@ -65,11 +59,6 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function fillDemo(acc) {
-    setForm((f) => ({ ...f, email: acc.email, password: acc.password, role: acc.role }));
-    setErrors({});
   }
 
   return (
@@ -168,29 +157,10 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <div className="mt-7 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-          <UserRound className="h-3.5 w-3.5" /> Demo accounts — synthetic data
-        </p>
-        <div className="mt-2.5 space-y-1.5">
-          {DEMO.map((acc) => (
-            <button
-              key={acc.role}
-              onClick={() => fillDemo(acc)}
-              className="flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-left text-xs ring-1 ring-slate-200 transition-colors hover:ring-brand-300"
-            >
-              <span>
-                <span className="font-bold text-slate-700">{acc.role.charAt(0) + acc.role.slice(1).toLowerCase()}</span>
-                <span className="text-slate-500"> · {acc.email}</span>
-              </span>
-              <span className="font-semibold text-brand-600">Use →</span>
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-[11px] leading-4 text-slate-500">
-          Demo passwords: Patient@MedNexus2026 · Doctor@MedNexus2026 · Admin@MedNexus2026 — local development only.
-        </p>
-      </div>
+      <p className="mt-7 text-center text-xs leading-5 text-slate-500">
+        Patient accounts are created by signing up and verifying your email.
+        Doctor and administrator accounts are provisioned by your clinic.
+      </p>
     </div>
   );
 }

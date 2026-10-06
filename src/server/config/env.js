@@ -81,11 +81,9 @@ const config = {
     rounds: int(process.env.BCRYPT_ROUNDS, 10),
   },
 
-  seedPasswords: {
-    admin: process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026',
-    doctor: process.env.SEED_DOCTOR_PASSWORD || 'Doctor@MedNexus2026',
-    patient: process.env.SEED_PATIENT_PASSWORD || 'Patient@MedNexus2026',
-  },
+  // The first administrator's address. Used by `npm run create-admin` when
+  // --email is not passed, so a hosted deploy can bootstrap without a shell.
+  adminEmail: process.env.ADMIN_EMAIL || '',
 
   ai: {
     apiKey: process.env.AI_API_KEY || '',

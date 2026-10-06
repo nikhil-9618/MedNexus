@@ -13,7 +13,7 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { startDB, stopDB, buildTestApp } = require('./helpers');
+const { startDB, stopDB, buildTestApp, TEST_ADMIN, TEST_DOCTOR } = require('./helpers');
 
 let app;
 let server;
@@ -180,11 +180,7 @@ describe('authentication', () => {
     assert.equal(human.body.otpRequired, true);
 
     // 4. Both rejections are still auditable by an administrator.
-    const admin = await registerAndLogin(
-      'admin@mednexus.demo',
-      process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026',
-      'ADMIN'
-    );
+    const admin = await registerAndLogin(TEST_ADMIN.email, TEST_ADMIN.password, 'ADMIN');
     const denied = await api('GET', '/api/admin/audit-logs?action=REGISTER&result=DENIED', { token: admin });
     assert.equal(denied.status, 200);
     assert.ok(denied.body.total >= 2, 'blocked registrations must leave an audit trail');
@@ -266,7 +262,7 @@ describe('RBAC & resource-level authorization', () => {
   before(async () => {
     patientA = await registerAndLogin('rbac.a@example.demo', 'Str0ngPass!3', 'PATIENT');
     patientB = await registerAndLogin('rbac.b@example.demo', 'Str0ngPass!4', 'PATIENT');
-    admin = await registerAndLogin('admin@mednexus.demo', process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026', 'ADMIN');
+    admin = await registerAndLogin(TEST_ADMIN.email, TEST_ADMIN.password, 'ADMIN');
   });
 
   test('patient cannot read another patient\'s records (403)', async () => {
@@ -306,14 +302,14 @@ describe('appointments', () => {
 
   before(async () => {
     patientToken = await registerAndLogin('appt.patient@example.demo', 'Str0ngPass!5', 'PATIENT');
-    doctorToken = await registerAndLogin('doctor@mednexus.demo', process.env.SEED_DOCTOR_PASSWORD || 'Doctor@MedNexus2026', 'DOCTOR');
+    doctorToken = await registerAndLogin(TEST_DOCTOR.email, TEST_DOCTOR.password, 'DOCTOR');
   });
 
-  test('doctor directory is public and lists the demo doctor', async () => {
+  test('doctor directory is public and lists the fixture doctor', async () => {
     const res = await api('GET', '/api/doctors');
     assert.equal(res.status, 200);
-    const doc = res.body.items.find((d) => d.email === 'doctor@mednexus.demo');
-    assert.ok(doc, 'demo doctor missing from directory');
+    const doc = res.body.items.find((d) => d.email === TEST_DOCTOR.email);
+    assert.ok(doc, 'fixture doctor missing from directory');
     doctorId = doc.id;
   });
 
@@ -448,7 +444,7 @@ describe('medical records access control', () => {
   before(async () => {
     patientToken = await registerAndLogin('rec.patient@example.demo', 'Str0ngPass!6', 'PATIENT');
     otherPatientToken = await registerAndLogin('rec.other@example.demo', 'Str0ngPass!7', 'PATIENT');
-    doctorToken = await registerAndLogin('doctor@mednexus.demo', process.env.SEED_DOCTOR_PASSWORD || 'Doctor@MedNexus2026', 'DOCTOR');
+    doctorToken = await registerAndLogin(TEST_DOCTOR.email, TEST_DOCTOR.password, 'DOCTOR');
   });
 
   test('patient with no relationship cannot view another patient\'s records (403)', async () => {
@@ -470,7 +466,7 @@ describe('medical records access control', () => {
 
 describe('rate limiting & audit', () => {
   test('audit log records security events', async () => {
-    const admin = await registerAndLogin('admin@mednexus.demo', process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026', 'ADMIN');
+    const admin = await registerAndLogin(TEST_ADMIN.email, TEST_ADMIN.password, 'ADMIN');
     // Trigger a FAILED_LOGIN
     await api('POST', '/api/auth/login', { body: { email: 'audit.test@example.demo', password: 'Nope!1234' } });
     const res = await api('GET', '/api/admin/audit-logs?action=FAILED_LOGIN', { token: admin });
@@ -501,11 +497,7 @@ describe('session revocation & brute-force lockout', () => {
     assert.equal(locked.status, 429, 'a locked account must refuse even the correct password');
 
     // An administrator can see why, which is the point of the audit trail.
-    const admin = await registerAndLogin(
-      'admin@mednexus.demo',
-      process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026',
-      'ADMIN'
-    );
+    const admin = await registerAndLogin(TEST_ADMIN.email, TEST_ADMIN.password, 'ADMIN');
     const audit = await api('GET', '/api/admin/audit-logs?action=SECURITY_EVENT&result=DENIED', { token: admin });
     assert.equal(audit.status, 200);
     assert.match(

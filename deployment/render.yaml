@@ -58,10 +58,14 @@ services:
         value: "true"
       - key: OTP_DEV_ECHO
         value: "true"
-      # Seeded demo accounts (synthetic data only) — override before first seed.
-      - key: SEED_ADMIN_PASSWORD
-        generateValue: true
-      - key: SEED_DOCTOR_PASSWORD
-        generateValue: true
-      - key: SEED_PATIENT_PASSWORD
-        generateValue: true
+      # The first administrator. No accounts are seeded, so without this the
+      # deployment has nobody who can sign in. Run once, in the Render shell:
+      #   npm run create-admin
+      # ADMIN_PASSWORD is optional — omit it and the command generates and
+      # prints a strong one.
+      - key: ADMIN_EMAIL
+        sync: false # you@your-clinic.example
+      - key: ADMIN_NAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
