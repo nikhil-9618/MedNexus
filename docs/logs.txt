@@ -579,3 +579,47 @@ Actions Taken:
 * Wrote the Docker, Render, Vercel and Atlas deployment path plus the post-deploy checklist
 * Ran npm run build (exit 0) and npm test (30/30 pass) after the final edits
 * Initialised git, verified no .env is tracked, and created commits 3a98e1f and 2a0da74
+================================================================================
+[2026-10-06T10:53:00+05:30] Production-path verification: seed, OTP delivery, CSP, audit ids
+================================================================================
+User Prompt (verbatim):
+deploy it
+push it in github
+(answers: push handed to the team; deployment target Render + Vercel + Atlas)
+Agent Response:
+Prepared the managed-cloud path and verified it instead of assuming it. Booting the API with NODE_ENV=production surfaced three defects that never appear on a developer machine, all now fixed and proven:
+
+1. An empty database. Seeding only ran in dev/test, so a hosted instance would have had no accounts and nothing to show. Added SEED_ON_EMPTY (default false) so a hosted demo can seed its own synthetic data while the database is empty.
+2. An OTP that could never arrive. Codes were only echoed in dev/test, so patient signup dead-ended on a hosted instance with no email provider. Added OTP_DEV_ECHO (default false), documented as demo-only, with a boot warning when it is on.
+3. A CSP that blocked the API. The Vercel headers allowed connect-src 'self' and the analytics host only, so every request to the Render origin would have been refused by the browser. connect-src now includes https://*.onrender.com.
+
+Also fixed a real defect found by the same run: audit logId was built from a truncated timestamp, so two events written in the same millisecond collided on the unique index and the second was silently dropped - unacceptable for an append-only security trail. Ids now carry three random bytes and a duplicate-key write is retried once.
+
+Verification (all on the production path, not dev):
+* Production boot check, 8 checks: health 200; seeded demo patient logs in on a fresh production database; registration returns 201 with otpRequired and no token; OTP_DEV_ECHO returns a 6-digit code; verify-otp 200 with a token; login then succeeds; digital twin refused without a token (401). Zero audit write failures after the fix (previously one every run).
+* Force-HTTPS check, 5 checks: plain HTTP on a real host returns 308 to the same URL over https; https-forwarded requests are served; /api/health probes are exempt; loopback is exempt. An earlier failed attempt was a test artefact - Node's fetch forbids overriding the Host header, so the request looked like loopback; a raw http request proved the middleware correct.
+* npm test: 30 tests, 30 pass, 0 fail. npm run build: exit 0.
+
+Team actions outstanding, in order: push the repository (no remote is configured), create the Render Blueprint from deployment/render.yaml, set CLIENT_URL to the Vercel domain and VITE_API_URL to https://<render-service>.onrender.com/api, then paste the deployed URL into metadata/submission.yaml.
+Agent Response Summary:
+Verified the hosted deployment path end to end in production mode rather than trusting the config, which exposed three blockers: no data would be seeded, no OTP could be delivered, and the Vercel CSP would block all API traffic. All three are fixed behind explicit opt-in switches, and a genuine audit-log id collision that silently dropped security events was fixed and retested. Force HTTPS was verified 5/5 with a raw request after a fetch limitation produced a false failure.
+Commit SHA:
+c69fe4b761fb14a4f37f478457bf5ad21f8c1f26
+Files Modified / Created:
+* src/server/config/env.js (Modified - seedOnEmpty, otpEcho, boot warning)
+* src/server/server.js (Modified - seed-on-empty gate for hosted demo)
+* src/server/services/otp.service.js (Modified - demo transport)
+* src/server/services/audit.service.js (Modified - collision-resistant logId, one retry)
+* src/client/vercel.json (Modified - connect-src allows the API origin)
+* deployment/render.yaml (Modified - SEED_ON_EMPTY, OTP_DEV_ECHO)
+* deployment/README.md (Modified - env table rows and the VITE_API_URL gotcha)
+* src/server/.env.example (Modified)
+* .env.example (Modified)
+Actions Taken:
+* Booted the API with NODE_ENV=production against an ephemeral MongoDB and exercised health, login, register, OTP verify and an admin-only route
+* Added the two opt-in demo switches, both defaulting off, with a security warning when OTP echoing is active
+* Widened the Vercel CSP so the SPA may call the Render API origin
+* Repaired the audit logId generator and confirmed zero dropped audit writes
+* Proved the force-HTTPS 308 with a raw HTTP request that can set the Host header
+* Ran npm test (30/30 pass) and npm run build (exit 0) after the edits
+* Committed as c69fe4b and recorded it in metadata/submission.yaml

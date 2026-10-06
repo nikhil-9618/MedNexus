@@ -5,7 +5,7 @@ submission:
   project_name: "MedNexus — Secure Clinic & Appointment Management"
   problem_statement: "PS-04 HealthTech"
   repository: ""          # Team GitHub repository URL — awaiting the team's repository
-  final_commit_sha: "2a0da74bb5e2aefbf453f9f785cd2b6aefc89455"  # Frozen application code
+  final_commit_sha: "c69fe4b761fb14a4f37f478457bf5ad21f8c1f26"  # Frozen application code
   deployed_url: ""        # Live deployment URL (if any)
   frontend: "Vercel"      # or Netlify
   backend: "Render"       # or Railway
