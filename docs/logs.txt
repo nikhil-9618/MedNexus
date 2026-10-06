@@ -623,3 +623,45 @@ Actions Taken:
 * Proved the force-HTTPS 308 with a raw HTTP request that can set the Host header
 * Ran npm test (30/30 pass) and npm run build (exit 0) after the edits
 * Committed as c69fe4b and recorded it in metadata/submission.yaml
+================================================================================
+[2026-10-06T10:58:00+05:30] Session revocation, brute-force lockout and a log correction
+================================================================================
+User Prompt (verbatim):
+implement all security implementations
+deploy it
+Agent Response:
+The project's own security checklist (tests/security-checklist.js) already ran 15 PASS / 0 FAIL before this turn, covering JWT integrity, RBAC isolation, resource-level record access, validation, rate-limit headers, audit visibility and error hygiene. The genuine gaps were in session and credential handling, so those are what this turn closed.
+
+1. SESSION REVOCATION. The JWT carried no session generation and there was no server-side revocation, so a leaked token stayed valid for its full 7-day lifetime and a password change did not stop it. Users now carry tokenVersion; issueToken stamps it as a tv claim; auth.middleware compares the claim against the account (free, because the user document is already loaded) and rejects a stale generation with the same generic 401 as an expired token. POST /api/auth/logout-all bumps the generation and revokes every device at once. Changing a password also revokes every session and returns a replacement token for the device that made the change.
+
+2. BRUTE-FORCE LOCKOUT. IP rate limiting cannot stop a distributed guess against one account, and it punishes a shared office address. services/loginGuard.service.js counts failures per account: five failures lock the account for 15 minutes, the lock is checked BEFORE the password is compared so a locked account cannot be probed at all, a successful sign-in clears the counter, and the lockout writes a SECURITY_EVENT / DENIED audit row plus a LOGIN_BLOCKED row for each refused attempt. Enum values were checked against AUDIT_ACTIONS before use.
+
+3. CLIENT CONSEQUENCE. Because a password change now revokes tokens, the client had to store the replacement or the user would be signed out by their own password change. authService.changePassword now persists the returned token; both call sites (patient and doctor profile) already send confirmPassword, which the Zod schema requires.
+
+VERIFICATION: npm test 32 tests, 32 pass, 0 fail (two new tests: the lockout test asserts five generic 401s, then a 429 that refuses even the correct password, then the administrator-visible lockout row; the revocation test asserts a token works, stops working after logout-all, and that a password change kills the pre-change token while the replacement works). npm run build and the 15-check security checklist were green earlier this turn with no client bundle change beyond services/authService.js.
+
+DEPLOY: not completed. Docker Desktop's daemon was not running (npipe not found); the desktop app was asked to start in the background and did not come up before the code freeze, so docker compose up was not attempted and must not be reported as done. The Render/Vercel/Atlas path is configured and verified from the previous turn but needs the team's accounts.
+
+RECORD CORRECTION (append-only, so recorded here rather than edited in place): the timestamp on the previous entry was written as 10:53:00 but the commits it describes were made at 10:23:54 and 10:24:15 (+05:30) per git. That entry also listed src/server/routes/auth.routes.js as modified; no such file exists - the auth routes live in src/server/routes/index.js, and that is the file actually changed. All file paths and times from this turn onward are taken from git and the shell, not estimated.
+Agent Response Summary:
+Closed the real security gaps left by the project's passing checklist: JWT session revocation through an account-level token generation, plus a per-account brute-force lockout checked before any password comparison. Both are covered by two new tests that also prove the audit trail, bringing the suite to 32/32 pass. The client now persists the replacement token a password change returns. Docker was requested but its daemon never started, so no container deployment ran; the cloud path remains configured and waiting on team accounts.
+Commit SHA:
+<pending - recorded in the next entry>
+Files Modified / Created:
+* src/server/services/loginGuard.service.js (Created)
+* src/server/models/User.js (Modified)
+* src/server/services/token.service.js (Modified)
+* src/server/middleware/auth.middleware.js (Modified)
+* src/server/controllers/auth.controller.js (Modified)
+* src/server/routes/index.js (Modified)
+* src/server/tests/api.test.js (Modified)
+* src/client/src/services/authService.js (Modified)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Ran the existing security checklist first to establish the real baseline (15 PASS / 0 FAIL)
+* Added tokenVersion revocation enforced in the auth middleware, with logout-all and password-change invalidation
+* Added per-account lockout with audit rows, checked before password comparison
+* Persisted the replacement token client-side after a password change
+* Fixed my own test payload (changePasswordSchema requires confirmPassword) rather than loosening the schema
+* Ran npm test: 32 tests, 32 pass, 0 fail
+* Corrected the previous entry's estimated timestamp and one inaccurate file path

@@ -440,3 +440,79 @@ describe('rate limiting & audit', () => {
     assert.ok(res.body.items.length >= 1, 'expected at least one FAILED_LOGIN audit entry');
   });
 });
+describe('session revocation & brute-force lockout', () => {
+  test('account locks after repeated failures and the lockout is auditable', async () => {
+    const email = 'lockout.check@example.demo';
+    const password = 'Str0ngPass!9';
+    await registerAndLogin(email, password, 'PATIENT');
+
+    // Five wrong passwords trip the lock on the fifth attempt, and each one
+    // still looks like an ordinary failure to the caller.
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const res = await api('POST', '/api/auth/login', {
+        body: { email, password: 'WrongPass!9', role: 'PATIENT' },
+      });
+      assert.equal(res.status, 401, `attempt ${attempt} must be a generic 401`);
+    }
+
+    // The sixth attempt is refused before the password is compared, so even the
+    // correct password cannot get in while the lock is active.
+    const locked = await api('POST', '/api/auth/login', {
+      body: { email, password, role: 'PATIENT' },
+    });
+    assert.equal(locked.status, 429, 'a locked account must refuse even the correct password');
+
+    // An administrator can see why, which is the point of the audit trail.
+    const admin = await registerAndLogin(
+      'admin@mednexus.demo',
+      process.env.SEED_ADMIN_PASSWORD || 'Admin@MedNexus2026',
+      'ADMIN'
+    );
+    const audit = await api('GET', '/api/admin/audit-logs?action=SECURITY_EVENT&result=DENIED', { token: admin });
+    assert.equal(audit.status, 200);
+    assert.match(
+      audit.body.items.map((r) => r.detail).join(' | '),
+      /Account locked after 5 failed sign-in attempts/
+    );
+  });
+
+  test('logout-all and a password change revoke previously issued tokens', async () => {
+    const email = 'revoke.check@example.demo';
+    const password = 'Str0ngPass!9';
+    const token = await registerAndLogin(email, password, 'PATIENT');
+
+    assert.equal((await api('GET', '/api/auth/me', { token })).status, 200);
+
+    const revoke = await api('POST', '/api/auth/logout-all', { token });
+    assert.equal(revoke.status, 200);
+
+    // The signature and expiry are both still valid — only the account's
+    // generation changed — so this is the revocation being exercised.
+    assert.equal(
+      (await api('GET', '/api/auth/me', { token })).status,
+      401,
+      'a revoked token must stop working'
+    );
+
+    const fresh = await api('POST', '/api/auth/login', { body: { email, password, role: 'PATIENT' } });
+    assert.equal(fresh.status, 200);
+
+    const changed = await api('POST', '/api/auth/change-password', {
+      token: fresh.body.token,
+      body: { currentPassword: password, newPassword: 'Even5tronger!9', confirmPassword: 'Even5tronger!9' },
+    });
+    assert.equal(changed.status, 200);
+    assert.ok(changed.body.token, 'the device that changed the password stays signed in');
+
+    assert.equal(
+      (await api('GET', '/api/auth/me', { token: fresh.body.token })).status,
+      401,
+      'the pre-change token must be dead'
+    );
+    assert.equal(
+      (await api('GET', '/api/auth/me', { token: changed.body.token })).status,
+      200,
+      'the replacement token must work'
+    );
+  });
+});

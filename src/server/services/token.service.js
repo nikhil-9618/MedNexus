@@ -4,7 +4,9 @@ const { config } = require('../config/env');
 
 function issueToken(user) {
   return jwt.sign(
-    { role: user.role },
+    // `tv` is the session generation. auth.middleware compares it against the
+    // stored value, so revoking tokens does not require a server-side list.
+    { role: user.role, tv: user.tokenVersion || 0 },
     config.jwt.secret,
     {
       subject: user._id.toString(),

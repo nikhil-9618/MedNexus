@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema(
     emailOtpExpiresAt: { type: Date, default: null },
     emailOtpAttempts: { type: Number, default: 0 },
     emailOtpLastSentAt: { type: Date, default: null },
+
+    // ---- Session revocation ----
+    // Bumped whenever every outstanding token for this account must die
+    // (password change, "sign out everywhere"). Tokens carry the value they
+    // were issued with, so a stale token is rejected even though its signature
+    // and expiry are still valid.
+    tokenVersion: { type: Number, default: 0 },
+
+    // ---- Brute-force lockout ----
+    // IP rate limiting slows an attacker down; this stops one account from
+    // being guessed at indefinitely from many addresses.
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
   },
   {
     timestamps: true,
@@ -47,6 +60,12 @@ const userSchema = new mongoose.Schema(
 
 userSchema.methods.comparePassword = function comparePassword(plain) {
   return bcrypt.compare(plain, this.passwordHash);
+};
+
+/** Invalidate every token already issued to this account. */
+userSchema.methods.revokeTokens = function revokeTokens() {
+  this.tokenVersion = (this.tokenVersion || 0) + 1;
+  return this.save();
 };
 
 /** Hash a plaintext password for storage (never store plaintext). */

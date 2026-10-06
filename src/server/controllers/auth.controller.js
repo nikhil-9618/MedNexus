@@ -12,6 +12,7 @@ const { ApiError } = require('../utils/ApiError');
 const { config } = require('../config/env');
 const { nextPatientCode } = require('../utils/ids');
 const otpService = require('../services/otp.service');
+const loginGuard = require('../services/loginGuard.service');
 const { HUMAN_FILL_MS } = require('../validators/auth.validator');
 
 /** Shape the safe public user object returned by auth endpoints. */
@@ -160,8 +161,13 @@ async function login(req, res) {
     throw ApiError.unauthorized(generic);
   }
 
+  // Account lockout is checked before the password is compared, so a locked
+  // account cannot be probed at all (IP limiting is the other half of this).
+  loginGuard.assertNotLocked(user);
+
   const ok = await user.comparePassword(password);
   if (!ok) {
+    await loginGuard.recordFailure(user);
     auditAsync({
       action: 'FAILED_LOGIN', role: user.role, userId: user._id.toString(), resourceType: 'AUTH',
       result: 'FAILED', ipAddress: ip, detail: 'Wrong password',
@@ -197,8 +203,7 @@ async function login(req, res) {
     );
   }
 
-  user.lastLoginAt = new Date();
-  await user.save();
+  await loginGuard.recordSuccess(user);
 
   const token = issueToken(user);
   auditAsync({
@@ -234,6 +239,30 @@ async function me(req, res) {
   res.json({ success: true, user: safeUser(user) });
 }
 
+/**
+ * POST /api/auth/logout-all — revoke every token issued to this account.
+ * The token generation is bumped, so tokens that are still unexpired (and
+ * correctly signed) stop working everywhere, not just in this browser.
+ */
+async function logoutAll(req, res) {
+  const user = await User.findById(req.user.id);
+  if (!user) throw ApiError.unauthorized('Invalid or expired token');
+
+  await user.revokeTokens();
+  await writeAudit({
+    action: 'LOGOUT',
+    role: user.role,
+    userId: user._id.toString(),
+    resourceType: 'AUTH',
+    resourceId: user._id.toString(),
+    result: 'SUCCESS',
+    ipAddress: req.ip,
+    detail: 'All sessions revoked (signed out everywhere)',
+  });
+
+  res.json({ success: true, message: 'Signed out of all devices' });
+}
+
 /** POST /api/auth/change-password (self-service, audited). */
 async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
@@ -250,15 +279,19 @@ async function changePassword(req, res) {
   }
 
   user.passwordHash = await User.hashPassword(newPassword, config.bcrypt.rounds);
+  // A password change must invalidate every existing session, otherwise a
+  // token stolen before the change keeps working after it.
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
 
   auditAsync({
     action: 'SECURITY_EVENT', role: user.role, userId: user._id.toString(), resourceType: 'AUTH',
     resourceId: user._id.toString(), result: 'SUCCESS', ipAddress: req.ip,
-    detail: 'Password changed successfully',
+    detail: 'Password changed successfully — all sessions revoked',
   });
 
-  res.json({ success: true, message: 'Password updated' });
+  // The device that made the change stays signed in with a fresh generation.
+  res.json({ success: true, message: 'Password updated', token: issueToken(user) });
 }
 
 module.exports = {
@@ -269,6 +302,7 @@ module.exports = {
   logout,
   me,
   changePassword,
+  logoutAll,
   safeUser,
 };
 

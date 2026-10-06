@@ -61,6 +61,8 @@ authRouter.post('/verify-otp', authLimiter, validate({ body: verifyOtpSchema }),
 authRouter.post('/resend-otp', authLimiter, validate({ body: resendOtpSchema }), authController.resendEmailOtp);
 authRouter.post('/login', authLimiter, validate({ body: loginSchema }), authController.login);
 authRouter.post('/logout', auth, authController.logout);
+// Revokes every token for the account, not just the one presented.
+authRouter.post('/logout-all', auth, authController.logoutAll);
 authRouter.get('/me', auth, authController.me);
 authRouter.post('/change-password', auth, validate({ body: changePasswordSchema }), authController.changePassword);
 router.use('/auth', authRouter);
