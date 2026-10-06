@@ -4,11 +4,11 @@
 submission:
   project_name: "MedNexus — Secure Clinic & Appointment Management"
   problem_statement: "PS-04 HealthTech"
-  repository: ""          # Team GitHub repository URL
-  final_commit_sha: ""    # Frozen commit SHA at the deadline
+  repository: ""          # Team GitHub repository URL — awaiting the team's repository
+  final_commit_sha: "2a0da74bb5e2aefbf453f9f785cd2b6aefc89455"  # Frozen application code
   deployed_url: ""        # Live deployment URL (if any)
   frontend: "Vercel"      # or Netlify
   backend: "Render"       # or Railway
   database: "MongoDB Atlas"
   submitted_at: ""        # ISO-8601 timestamp
-  notes: "Synthetic/demo data only. JavaScript/JSX — no TypeScript."
+  notes: "Synthetic/demo data only. JavaScript/JSX — no TypeScript. The frozen SHA above is the last commit containing application code; documentation and metadata commits may follow it. Verified before freezing: npm run build exit 0 and npm test 30/30 pass."

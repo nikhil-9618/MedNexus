@@ -489,3 +489,93 @@ Actions Taken:
 * Added a skip-to-content link for keyboard navigation
 * Verified no <img> elements exist, so alt text needs are met by inline SVG aria-labels
 * npm run build (pass); confirmed hero, workflow, nav and title live in the browser
+================================================================================
+[2026-10-06T10:12:00+05:30] OTP verification, 3D digital twin, launch checklist and deploy config
+================================================================================
+User Prompt (verbatim):
+<privacy policy page | terms and conditions page | get your secrets off the front end | force HTTPS | cookie consent banner | meta titles and descriptions | social preview image | favicon | sitemap and robots.txt | alt text | compress images | page load speed | colour contrast | mobile friendly | custom 404 | broken links | form validation | spam/bot protection | analytics | one clear call to action> when i create a patient account it should verify with email otp verification. medNexus should be highlighted bigger and bigger in the middle of the page and remove unwanted information in main page. add relevant data how it works and add a workflow of the website. ui is basic i think. Design and build a premium, futuristic, enterprise-grade healthcare management platform UI/UX for MedNexus ... <3D hospital digital twin specification> ... deploy it. push it in github.
+Agent Response:
+Completed the remaining launch-checklist items, then added email-OTP verification, rebuilt the landing hero, delivered the admin-only 3D hospital digital twin, and prepared the full deployment + version-control path.
+
+CHECKLIST (20/20): privacy and terms pages at /privacy and /terms; secrets off the front end (the client reads only VITE_API_URL / VITE_ANALYTICS_DOMAIN, config/env.js remains the sole process.env reader and is never imported by client code); force-HTTPS 308 middleware in app.js for production that honours x-forwarded-proto and exempts localhost, plus 'upgrade-insecure-requests' in the production CSP; consent banner storing md_cookie_consent; meta titles/descriptions plus full Open Graph and Twitter tags; og-image.svg at 1200x630; favicon.svg matching the canonical mark; sitemap.xml and robots.txt (private portals disallowed); alt text satisfied by construction because the client ships zero <img> elements - every mark is an inline SVG with role="img" and aria-label; image compression N/A for the same reason; page-load speed fixed by measure (see below); colour contrast fixed by measure (see below); mobile verified by rendering at 375x812; custom 404 plus SPA fallback; broken links audited; client + Zod form validation; honeypot and fill-time bot traps; consent-gated analytics; one clear CTA ("Enter MedNexus").
+
+EMAIL OTP: services/otp.service.js issues a 6-digit code with crypto.randomInt, stores only its bcrypt hash with a 10-minute TTL, caps verification at 5 attempts and applies a 30-second resend cooldown. Registration now returns 201 with otpRequired and no token; login is gated on emailVerified with a 403. Seeded demo accounts default emailVerified=true so the demo logins still work. The dev transport prints the code and echoes devOtp only when isDev or isTest - production never returns the code. The client gained a two-step register flow (form, then OTP) plus resend.
+
+COLOUR CONTRAST: slate-400 (#94a3b8) measured 2.56:1 on white - a real WCAG failure for body text. slate[500] is redefined to #5b6b7f, measuring 5.45 / 5.21 / 4.97 / 5.09 on white, slate-50, slate-100 and brand-50, so it passes AA everywhere it is used. All 86 text-slate-400 occurrences were replaced; text-slate-300 was raised on light surfaces but kept for disabled controls; text-slate-300 on slate-900 reads 6.96:1 and was left alone. Measured ratios are recorded beside the token in tailwind.config.js.
+
+PAGE LOAD: every signed-in page is now a lazy() route, the dashboard shell keeps the sidebar and topbar mounted behind a Suspense boundary, and vendor code is split into vendor-react, vendor-charts and vendor-icons (three.js stays inside the twin's chunk). Measured build: initial entry 118.88 kB, down from ~832 kB; vendor-react 165.18 kB; vendor-icons 29.90 kB; vendor-charts 421.92 kB is referenced by no public route so it is never fetched; the twin is a separate 861.50 kB chunk an administrator must open. React Router v7 future-flag warnings are cosmetic and remain.
+
+BOT PROTECTION: a hidden honeypot field plus a minimum fill time are checked before any database or hashing work and rejected with one generic 400, so a scripted signup learns nothing. Each rejection writes an AuditLog row with role SYSTEM, result DENIED and a detail naming the reason. This was proven twice: with live curl against the running API (honeypot and instant submit both 400 with no devOtp, a plausible 9-second submission 201, and a legacy client with no bot fields still 201 so nobody is locked out), and by a new automated test. Audit rows for both reasons are visible to admins. Verification: npm test - 30 tests, 30 pass, 0 fail. Note: an earlier attempt appeared to fail because a stale process held port 5000 and was serving old code; restarting it produced the correct behaviour.
+
+3D DIGITAL TWIN: /admin/digital-twin renders a react-three-fiber ground plan of 14 departments in a deterministic grid, with block height driven by the real waiting count, patient capsules, doctor markers, animated flow paths, camera rig, OrbitControls, fog and shadows. The HUD shows eight real aggregates (WAITING 25, IN CONSULTATION 0, NOW SERVING 1, APPOINTMENTS TODAY 1, PENDING LAB 0, PENDING PRESCRIPTIONS 0, EMERGENCY 0, DOCTORS ON STATION 8) with per-department waiting counts and a live event stream derived from queue timestamps, plus an empty state, a live toggle and a department inspector. The API is ADMIN-only and returns 403 to patient and doctor tokens (verified live). The tool uses three 0.169.0, @react-three/fiber 8.17.10 and @react-three/drei 9.114.3 - the React 18 compatible line. The department name/code mismatch (Doctor.department stores the name, queues store the code) is bridged by resolveDepartmentCode, toDeptCode and deptCodeOf over the shared HOSPITAL_DEPTS table.
+
+DEPLOYMENT: Dockerfile.server (node:20-alpine, non-root, tini, npm ci --omit=dev, healthcheck on /api/health), Dockerfile.client (Vite build served by nginx:1.27-alpine), nginx.conf (SPA fallback, /api proxy to api:5000, gzip, HSTS, CSP, immutable asset caching, no-cache index.html), docker-compose.yml (mongo:7 + api + web, healthcheck-gated, JWT_SECRET required so a stack cannot boot with a placeholder secret), render.yaml (Render Blueprint with generateValue for JWT_SECRET and FORCE_HTTPS true), src/client/vercel.json, both .env.example files and a rewritten deployment/README.md covering Docker, Render plus Vercel plus Atlas, a generic Node host, the environment-variable table, a grep-based check that no secret reaches the bundle, and a post-deploy checklist.
+
+VERSION CONTROL: git init -b main, repository-local identity, .gitattributes for LF normalisation and binary assets, .gitignore extended for Freebuff session state while keeping !.env.*.example tracked. Verified no .env is in the index. First commit 3a98e1fa4f8d8bca7bd3bec09c6b6ba57728527b (180 files). Second commit 2a0da74bb5e2aefbf453f9f785cd2b6aefc89455 covers route-level code splitting, the bot-trap audit enum fix, the deployment README and this architecture documentation. No remote is configured yet, so nothing has been pushed - the repository URL is still needed from the team.
+
+KNOWN LIMITATION: the pasted logo SVG was truncated before its path data arrived, so the heart and network mark was reconstructed to match the written description rather than from the original bytes. Gradients, palette, all text coordinates and animation names are exact.
+Agent Response Summary:
+Finished the twenty-item website launch checklist, added email-OTP registration verification, and shipped the admin-only 3D digital twin on the React 18 compatible three.js line. Hardened the public site by measure rather than by assertion: slate-500 was redefined after slate-400 failed WCAG, and the initial bundle dropped from about 832 kB to 118.88 kB by splitting every signed-in route. Bot traps and consent-gated analytics were verified live and in the test suite (30/30 pass), and the deployment tooling plus git history were put in place pending the team's repository URL.
+Commit SHA:
+2a0da74bb5e2aefbf453f9f785cd2b6aefc89455
+Files Modified / Created:
+* src/client/src/pages/public/PrivacyPage.jsx (Created)
+* src/client/src/pages/public/TermsPage.jsx (Created)
+* src/client/src/pages/public/NotFoundPage.jsx (Modified)
+* src/client/src/components/common/CookieConsent.jsx (Created)
+* src/client/src/components/common/MedNexusLogo.jsx (Modified)
+* src/client/src/lib/analytics.js (Created)
+* src/client/src/main.jsx (Modified)
+* src/client/src/services/api.js (Modified)
+* src/client/src/App.jsx (Modified - lazy routes, tab title)
+* src/client/src/components/layout/DashboardLayout.jsx (Modified - Suspense boundary, digital twin nav)
+* src/client/src/components/layout/PublicLayout.jsx (Modified - footer links)
+* src/client/src/index.css (Modified)
+* src/client/src/pages/auth/RegisterPage.jsx (Modified - honeypot, fill timer, OTP step)
+* src/client/src/pages/auth/LoginPage.jsx (Modified)
+* src/client/src/pages/public/LandingPage.jsx (Modified - hero lockup, workflow)
+* src/client/src/pages/admin/AdminDigitalTwinPage.jsx (Created)
+* src/client/src/pages/admin/AdminDashboardPage.jsx (Modified)
+* src/client/src/pages/patient/PatientDashboardPage.jsx (Modified - static api import)
+* src/client/src/routes/paths.js (Modified)
+* src/client/src/context/AuthContext.jsx (Modified - verifyOtp, resendOtp)
+* src/client/src/services/adminService.js (Modified)
+* src/client/tailwind.config.js (Modified - slate500 contrast override, brand ramp)
+* src/client/vite.config.js (Modified - manualChunks, chunkSizeWarningLimit)
+* src/client/index.html (Modified - title, meta, OG, Twitter, fonts)
+* src/client/public/{robots.txt,sitemap.xml,og-image.svg,favicon.svg} (Created)
+* src/client/vercel.json (Created)
+* src/client/.env.example (Created)
+* src/server/services/otp.service.js (Created)
+* src/server/controllers/auth.controller.js (Modified - bot traps, OTP, login gate)
+* src/server/validators/auth.validator.js (Modified - honeypot, fill time, OTP schemas)
+* src/server/models/User.js (Modified - emailVerified, OTP fields)
+* src/server/routes/auth.routes.js (Modified - verify-otp, resend-otp)
+* src/server/app.js (Modified - force HTTPS, CSP)
+* src/server/config/env.js (Modified - forceHttps)
+* src/server/controllers/digitalTwin.controller.js (Created)
+* src/server/routes/admin.routes.js (Modified)
+* src/server/services/seed*.js (Modified - department codes, emailVerified)
+* src/server/tests/api.test.js (Modified - bot trap test)
+* src/server/.env.example (Created)
+* deployment/{Dockerfile.server,Dockerfile.client,nginx.conf,docker-compose.yml,render.yaml,.env.production.example} (Created)
+* deployment/README.md (Modified - full deployment guide)
+* .dockerignore (Created)
+* .gitattributes (Created)
+* .gitignore (Modified)
+* .env.example (Modified)
+* docs/APPROACH.md (Modified - sections 13-19, milestones 23-26)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Wrote the fifteen missing launch-checklist artefacts and wired each one into the app
+* Implemented hashed, rate-limited email-OTP verification end to end (service, model, routes, controller, client)
+* Rebuilt the landing hero around the canonical lockup and added the workflow and how-it-works sections
+* Built the react-three-fiber digital twin against live MongoDB aggregates and restricted the endpoint to admins
+* Measured and fixed colour contrast, replacing all 86 text-slate-400 usages with a new AA-passing slate-500
+* Split every signed-in route into its own lazy chunk; measured the build at 118.88 kB initial entry
+* Added honeypot and fill-time bot traps with DENIED audit rows; verified by live curl and a new automated test
+* Audited every internal link, asset reference and sitemap URL with a one-off script (0 broken)
+* Rendered the site and the twin at 1440x900 and 375x812 to confirm desktop and mobile layouts
+* Wrote the Docker, Render, Vercel and Atlas deployment path plus the post-deploy checklist
+* Ran npm run build (exit 0) and npm test (30/30 pass) after the final edits
+* Initialised git, verified no .env is tracked, and created commits 3a98e1f and 2a0da74
