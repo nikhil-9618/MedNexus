@@ -4,10 +4,10 @@
 submission:
   project_name: "MedNexus — Secure Clinic & Appointment Management"
   problem_statement: "PS-04 HealthTech"
-  repository: ""          # Team GitHub repository URL — awaiting the team's repository
+  repository: "https://github.com/nikhil-9618/MedNexus.git"
   final_commit_sha: "c69fe4b761fb14a4f37f478457bf5ad21f8c1f26"  # Frozen application code
-  deployed_url: ""        # Live deployment URL (if any)
-  frontend: "Netlify"      # Netlify (netlify.toml configured; Vercel alternative)
+  deployed_url: "https://med-nexus-iota.vercel.app"
+  frontend: "Vercel"
   backend: "Render"       # or Railway
   database: "MongoDB Atlas"
   submitted_at: ""        # ISO-8601 timestamp

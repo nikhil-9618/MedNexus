@@ -5,7 +5,7 @@ team:
   id: "60"           
   name: "Sarle Bro Pvt Ltd"  # Team name
   size: 4           # Exactly 2 or 4
-  repository: ""    # Your team's GitHub repository URL
+  repository: "https://github.com/nikhil-9618/MedNexus.git"
 
 members:
   - name: "NIKHIL"

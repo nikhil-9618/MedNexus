@@ -1182,3 +1182,39 @@ Files Modified / Created:
 * docs/logs.txt (Modified)
 Actions Taken:
 * Appended turn-by-turn log entry to docs/logs.txt
+================================================================================
+[2026-10-06T19:34:53+05:30] Diagnose and resolve hosted Vercel 404 API connectivity
+================================================================================
+User Prompt (verbatim):
+Create your patient account
+Doctors and admins are provisioned by the clinic.
+Website
+Full name
+Email
+Phone
+Date of birth
+GenderFemaleMaleOther
+Password
+Confirm password
+Password must be 8+ characters with uppercase, lowercase and a number.
+Create accountAlready registered? [Sign in](https://med-nexus-iota.vercel.app/login)
+We keep this simple. MedNexus needs essential browser storage for your signed-in session. No advertising trackers, ever. No analytics or tracking scripts are loaded. See our [privacy policy](https://med-nexus-iota.vercel.app/privacy).
+Essential onlyGot it
+Request failed with status code 404
+Agent Response:
+Diagnosed the cause of the `404 Not Found` error encountered on the live Vercel deployment (https://med-nexus-iota.vercel.app): (1) Cause: Vercel is currently hosting the static React single-page frontend. When registration is submitted, the client requests `/api/auth/register`. Because Vercel has no backend Express server running same-origin `/api` and `VITE_API_URL` was not configured in Vercel environment variables, the request went to the Vercel static host and was answered with 404. (2) Updated `src/client/src/services/api.js` to provide clear, actionable diagnostic guidance on 404s. (3) Rebuilt frontend bundle (`npm run build`). (4) Updated `metadata/submission.yaml` and `metadata/team.yaml` recording `https://med-nexus-iota.vercel.app` and the GitHub repository. (5) Outlined the required steps to connect the live backend on Render/Node and set `VITE_API_URL` on Vercel.
+Agent Response Summary:
+Identified that the Vercel static host returned 404 because the Express backend API is not connected via VITE_API_URL. Enhanced API error diagnostics, rebuilt the client bundle, updated submission metadata, and provided configuration steps.
+Commit SHA:
+<staged and committed below>
+Files Modified / Created:
+* src/client/src/services/api.js (Modified)
+* metadata/team.yaml (Modified)
+* metadata/submission.yaml (Modified)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Diagnosed 404 root cause on Vercel frontend
+* Enhanced apiError helper in src/client/src/services/api.js
+* Rebuilt client bundle with npm run build
+* Updated metadata/team.yaml and metadata/submission.yaml
+* Appended turn-by-turn log entry to docs/logs.txt

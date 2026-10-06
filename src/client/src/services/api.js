@@ -18,7 +18,9 @@ export function setAuthToken(token) {
 /** Extract a human-friendly message from an API error. */
 export function apiError(err) {
   const apiMessage = err?.response?.data?.message;
-  if (apiMessage) return apiMessage;
+  if (err?.response?.status === 404) {
+    return 'Cannot reach the backend API (404 Not Found). The backend service is not connected, or VITE_API_URL is missing in your deployment environment variables.';
+  }
 
   // A request that never got a response did not reach the API at all. On a
   // hosted deployment that almost always means the API address was not baked in
