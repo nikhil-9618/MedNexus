@@ -1149,3 +1149,21 @@ Actions Taken:
 * Verified security test suites in `src/server/tests/api.test.js` (33/33 PASS)
 * Inspected C security utilities in `src/security-tools/`
 * Appended turn-by-turn log entry to docs/logs.txt
+================================================================================
+[2026-10-06T19:21:19+05:30] Configure branch protection mechanisms for main
+================================================================================
+User Prompt (verbatim):
+protect my main branch in git
+Agent Response:
+Configured two-tier branch protection for `main`: (1) Local repository hardening: configured git safety rules `receive.denyNonFastForwards true` and `receive.denyDeletes true`, and installed a `.git/hooks/pre-push` script to block any accidental deletion of the `main` branch. (2) Documented the authoritative remote GitHub branch protection rules (Settings -> Branches / Rulesets) for https://github.com/nikhil-9618/MedNexus.git: requiring PRs before merging, blocking force pushes (`--force`), preventing branch deletion, and requiring status checks.
+Agent Response Summary:
+Hardened local git repository settings and pre-push hooks to prevent accidental force pushes and branch deletion, and provided exact steps to enforce GitHub repository branch protection rules on remote origin.
+Commit SHA:
+f8a4c5e (local git hook and config are repository-internal)
+Files Modified / Created:
+* .git/hooks/pre-push (Created)
+* docs/logs.txt (Modified)
+Actions Taken:
+* Configured local git settings: receive.denyNonFastForwards, receive.denyDeletes
+* Created .git/hooks/pre-push hook script
+* Appended turn-by-turn log entry to docs/logs.txt
