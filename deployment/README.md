@@ -143,6 +143,21 @@ development. The essentials:
 | `SEED_ON_EMPTY` | API | `true` lets a hosted instance seed the synthetic demo data itself, because it has no shell to run `npm run seed` in. Off by default; only writes while the database is empty |
 | `OTP_DEV_ECHO` | API | `true` returns the email-verification code to the client. Required for this deploy to be usable, because no email provider is configured. **Leave it off anywhere real patient data could appear** |
 | `VITE_API_URL` | Web (build) | API origin; empty means same-origin `/api`. On Vercel set this to `https://<render-service>.onrender.com/api`, otherwise the SPA's requests go to the Vercel origin and 404 |
+
+**Why the API build says `--workspaces=false`.** This repository uses npm workspaces
+(`src/client` and `src/server`). Running a plain `npm install` with the working directory set to
+`src/server` makes npm resolve the *repository root* and install both workspaces' production
+dependencies — the API would pull in the client's `three.js`, `recharts` and `react` for nothing.
+With `--workspaces=false`, npm treats `src/server` as its own project and installs exactly the
+server's dependencies from `src/server/package-lock.json` (118 packages). Both the flag and that
+lock file are required: `npm ci` needs a lock file beside the package it installs, and the only
+other lock file in the repository is the root workspace one.
+
+Before the cloud path was recommended, this was verified end to end: a copy of `src/server` was
+installed in an empty directory away from the workspace root using exactly the command above,
+then booted with `NODE_ENV=production`. It served `/api/health`, seeded its own demo data,
+signed in a demo patient, served an authenticated request through the new token-revocation check,
+and still refused a patient on an admin route (403).
 | `VITE_ANALYTICS_DOMAIN` | Web (build) | Optional; unset disables analytics entirely |
 
 ### Secrets never reach the browser

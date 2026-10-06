@@ -15,7 +15,12 @@ services:
     plan: free
     region: singapore
     rootDir: src/server
-    buildCommand: npm install --omit=dev --omit=optional
+    # --workspaces=false keeps this a standalone install of src/server only.
+    # Without it npm resolves the repository's workspace root and installs the
+    # client's production dependencies (three.js, recharts, react) too, which
+    # the API never uses. src/server/package-lock.json makes the install
+    # reproducible; it is generated with the same flag.
+    buildCommand: npm ci --omit=dev --omit=optional --workspaces=false
     startCommand: node server.js
     healthCheckPath: /api/health
     autoDeploy: true

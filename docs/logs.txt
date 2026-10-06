@@ -675,3 +675,41 @@ password change. The named import was corrected and the client rebuilt to
 confirm. Final commit SHA for the turn: 7529ce (see git log).
 [2026-10-06T11:06:00+05:30] Correction: the SHA predicted in the addendum above was wrong; the real final commit for that turn is db3468f (verified against git log).
 [2026-10-06T11:10:00+05:30] Clarification: the deploy blocker is sharper than "the daemon was not running". Docker Desktop is NOT installed on this machine (no Docker Desktop.exe under Program Files/Docker), so there is no engine at all to start - only the docker CLI plus the Compose plugin are present. docker compose up cannot be made to work here without installing a container engine first. The cloud path (Render + Vercel + Atlas) remains configured and verified but needs the team accounts.
+
+================================================================================
+[2026-10-06T11:20:00+05:30] Render parity verification and a standalone server lock file
+================================================================================
+User Prompt (verbatim):
+(answered the deploy question with: "Cloud: I'll do Atlas + Render now")
+Agent Response:
+Making the cloud path actually deployable turned up a real build defect. This repository uses npm
+workspaces, and Render's documented install command run with rootDir src/server makes npm resolve
+the repository root, so the API's build would have installed both workspaces' production
+dependencies - three.js, recharts and react included - for a service that never uses them. There
+was also no lock file beside src/server/package.json, only the root workspace one, so `npm ci`
+could not have run there at all.
+
+Fix: src/server/package-lock.json now exists (generated with --workspaces=false so it describes a
+standalone install), and the Render blueprint builds with
+`npm ci --omit=dev --omit=optional --workspaces=false`.
+
+Verified by parity test rather than assumption: a copy of src/server was placed in an empty
+directory with no workspace ancestor, installed with exactly the command Render will run (118
+packages), and booted with NODE_ENV=production. Result 4/4 - /api/health 200, seed-on-empty created
+the demo data and a demo patient signed in, an authenticated request passed the new token-version
+check, and a patient was still refused on the admin digital-twin route with 403. The module set is
+therefore complete without anything hoisted from the workspace root.
+Agent Response Summary:
+A parity check of Render's build surfaced two defects that would have broken or bloated the deploy: the install command pulled in the entire client dependency tree through the workspace root, and npm ci had no lock file to work from in src/server. Both are fixed, and the corrected command was proven by installing and booting a standalone copy of the server in production mode.
+Commit SHA:
+recorded below
+Files Modified / Created:
+* src/server/package-lock.json (Created)
+* deployment/render.yaml (Modified - standalone build command)
+* deployment/README.md (Modified - why the flag is required, and the parity evidence)
+* docs/logs.txt (Modified - this entry)
+Actions Taken:
+* Compared npm install behaviour with and without --workspaces=false using dry runs
+* Generated a standalone lock file for src/server and confirmed npm ci reproduces the install
+* Ran a production parity boot of the standalone copy (4/4 checks)
+* Updated the Render blueprint and the deployment guide accordingly
