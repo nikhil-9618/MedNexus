@@ -1,0 +1,101 @@
+# ---------------------------------------------------------------------------
+# MedNexus — Netlify configuration (static SPA)
+#
+# Deploy the front end only. The API is a separate Node service (Render, Fly,
+# Railway, a VPS, …); this file never builds it.
+#
+# REQUIRED: set VITE_API_URL in Netlify → Site configuration → Environment
+# variables, e.g.  VITE_API_URL = https://mednexus-api.onrender.com/api
+# Vite inlines it at BUILD time, so it must be present before the build and a
+# change requires a redeploy — editing it afterwards has no effect on an
+# already-published bundle. Without it the app calls same-origin /api, which
+# Netlify cannot serve, and every sign-in and signup silently fails.
+#
+# The API host must ALSO be allowed by the Content-Security-Policy below
+# (connect-src). Add your own domain there if the API is not on onrender.com.
+# ---------------------------------------------------------------------------
+
+[build]
+  # Leave Netlify's "Base directory" setting EMPTY so this file is read from the
+  # repository root.
+  base = "."
+  # The repository is an npm workspace whose single lockfile lives at the root,
+  # so the install happens there and the client build is invoked through the
+  # workspace script — that keeps the build reproducible via the lockfile.
+  # --omit=optional skips the API's optional mongodb-memory-server, whose
+  # postinstall downloads a MongoDB binary the static build never uses.
+  command = "npm ci --no-audit --no-fund --omit=optional && npm run build --workspace mednexus-client"
+  publish = "src/client/dist"
+
+[build.environment]
+  # Vite 6 needs Node 18+/20+/22+. Pinned so a future Netlify default cannot
+  # break the build silently.
+  NODE_VERSION = "22"
+
+# ---------------------------------------------------------------------------
+# Routing
+# ---------------------------------------------------------------------------
+
+# A missing asset must 404, not fall through to the app shell. Without this,
+# a stale index.html asking for a deleted hashed bundle would receive
+# index.html with a 200 and the browser would fail parsing HTML as JavaScript
+# ("Unexpected token '<'") instead of reporting a clean 404. This rule must
+# come FIRST: Netlify applies the first matching rule, and real files are still
+# served directly because these rewrites are not forced.
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 404
+
+# Single-page application: every other unknown path is answered with the app
+# shell so client-side routes such as /admin/digital-twin or /verify-email work
+# on a hard refresh instead of 404ing.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ---------------------------------------------------------------------------
+# Headers (mirrors src/client/vercel.json so both hosts behave identically)
+# ---------------------------------------------------------------------------
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Strict-Transport-Security = "max-age=15552000; includeSubDomains"
+    # connect-src is the one directive that must name the API origin. The
+    # wildcard covers Render's default *.onrender.com hostnames.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://plausible.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://plausible.io https://*.onrender.com https://*.render.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+    # The HTML shell must never be cached: it references content-hashed asset
+    # filenames, so a stale copy pins users to a previous deploy.
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/og-image.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
