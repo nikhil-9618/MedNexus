@@ -186,3 +186,28 @@ grep -roE "(JWT_SECRET|MONGODB_URI|BCRYPT_ROUNDS|SEED_[A-Z_]+)" src/client/src s
       `X-Frame-Options` are present on responses
 - [ ] `/robots.txt` and `/sitemap.xml` resolve
 - [ ] A deep link such as `/terms` renders the app rather than a 404
+
+## Netlify-hosted Account Deployment
+
+The Netlify deployment now uses Netlify Identity for accounts and email-confirmation links,
+and Netlify Database for persistent patient profiles. `netlify.toml` builds the existing Vite
+frontend and deploys the Functions alongside it. Use Node 22.12 or newer and install dependencies
+from the repository root. The Identity activation marker is included in `.netlify/features/`;
+the database schema and generated migration are included under `db/` and `netlify/database/`.
+Netlify provisions the database and applies its migration during deployment. Account creation
+does not require a MongoDB connection, a custom JWT secret, or a Resend API key.
+
+Keep Identity registration open and email confirmation enabled in the site's Identity settings.
+Confirmation emails return to this site; the frontend processes the link and restores the session.
+Use synthetic/demo profile information only. After deployment, test signup, inbox delivery,
+confirmation, sign-in, page reload and profile editing. New registrations always receive PATIENT
+access. Doctor or admin privileges must be assigned through administrator-controlled app metadata,
+not through signup fields.
+
+For local development, use `netlify dev --filter mednexus-client --port 8889` from the repository
+root. Use `npm run test:netlify` for account/security regressions and `npm run typecheck:netlify`
+for the Functions and database code.
+
+This change covers account creation, verification, authentication and patient profiles only.
+Existing MongoDB accounts and the legacy appointment, doctor, medical-record and administrative
+APIs were not migrated. Unconnected API routes explicitly return JSON with status 501.

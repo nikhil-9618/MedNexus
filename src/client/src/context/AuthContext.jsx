@@ -1,65 +1,68 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { api, setAuthToken } from '../services/api.js';
+import { useNavigate } from 'react-router-dom';
+import { onAuthChange, AUTH_EVENTS } from '@netlify/identity';
+import { useToast } from './ToastContext.jsx';
+import {
+  initializeIdentity, loadAccount, createIdentityAccount, signIn, signOut,
+} from '../services/identityService.js';
+import { apiError } from '../services/api.js';
+import { homeForRole } from '../routes/paths.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
+  const [sessionError, setSessionError] = useState('');
+  const navigate = useNavigate();
+  const toast = useToast();
 
-  // Restore session on load.
   useEffect(() => {
-    const token = localStorage.getItem('md_token');
-    if (!token) { setBooting(false); return; }
-    setAuthToken(token);
-    api.get('/auth/me')
-      .then((res) => setUser(res.data.user))
-      .catch(() => {
-        localStorage.removeItem('md_token');
-        setAuthToken(null);
+    let active = true;
+    const unsubscribe = onAuthChange((event) => {
+      if (active && event === AUTH_EVENTS.LOGOUT) setUser(null);
+    });
+    initializeIdentity()
+      .then(async ({ identity, callback }) => {
+        if (!identity) return;
+        const account = await loadAccount();
+        if (!active) return;
+        setUser(account);
+        if (callback?.type === 'confirmation') {
+          toast.success('Email confirmed. Your account is ready.');
+          navigate(homeForRole(account.role), { replace: true });
+        }
       })
-      .finally(() => setBooting(false));
+      .catch((error) => {
+        if (!active) return;
+        const message = apiError(error);
+        setSessionError(message);
+        toast.error(message);
+      })
+      .finally(() => { if (active) setBooting(false); });
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   const login = useCallback(async (email, password, role) => {
-    const res = await api.post('/auth/login', { email, password, role });
-    localStorage.setItem('md_token', res.data.token);
-    setAuthToken(res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
+    const account = await signIn(email, password, role);
+    setSessionError('');
+    setUser(account);
+    return account;
   }, []);
 
-  /**
-   * Patient registration no longer opens a session: the API returns an
-   * email-OTP challenge that must be completed with verifyOtp().
-   */
   const register = useCallback(async (payload) => {
-    const res = await api.post('/auth/register', payload);
-    return res.data;
-  }, []);
-
-  const verifyOtp = useCallback(async (email, otp) => {
-    const res = await api.post('/auth/verify-otp', { email, otp });
-    localStorage.setItem('md_token', res.data.token);
-    setAuthToken(res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
-  }, []);
-
-  const resendOtp = useCallback(async (email) => {
-    const res = await api.post('/auth/resend-otp', { email });
-    return res.data;
+    const result = await createIdentityAccount(payload);
+    if (result.user) setUser(result.user);
+    return result;
   }, []);
 
   const logout = useCallback(async () => {
-    try { await api.post('/auth/logout'); } catch { /* token already invalid */ }
-    localStorage.removeItem('md_token');
-    setAuthToken(null);
-    setUser(null);
+    try { await signOut(); }
+    finally { setUser(null); setSessionError(''); }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, booting, login, register, verifyOtp, resendOtp, logout, setUser }}>
+    <AuthContext.Provider value={{ user, booting, sessionError, login, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

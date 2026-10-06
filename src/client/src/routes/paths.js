@@ -7,8 +7,6 @@ export const PATHS = {
   contact: '/contact',
   login: '/login',
   register: '/register',
-  // Step 2 of registration: confirm the emailed code. Reachable on its own so
-  // someone who signed up but never confirmed can finish from the login page.
   verifyEmail: '/verify-email',
   accessDenied: '/access-denied',
 

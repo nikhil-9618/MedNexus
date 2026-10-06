@@ -369,3 +369,37 @@ controls, 5/5 stubbed email-transport checks (request shape, injection escaping,
 and network failure degradation), and 5/5 production-mode checks with `OTP_DEV_ECHO` both off
 (no code leaked) and on. Verified live: an OTP issued before a full server restart still validated
 afterwards, and the browser walked unconfirmed login → `/verify-email` → resend → verify → portal.
+
+## 21. Netlify-hosted Accounts
+
+The Netlify site previously served a static frontend whose `/api/auth/register` request had no
+backend. The participant selected Netlify-hosted accounts instead of reconnecting an external
+Express service. Registration, email confirmation, login, logout, session refresh and password
+changes now use `@netlify/identity`. Confirmation uses an emailed link, not the legacy six-digit
+OTP. Callback processing is shared across React StrictMode mounts to avoid redeeming a link
+twice. Automatically confirmed accounts explicitly establish an Identity session before loading
+the portal. Provider errors and unconfirmed sign-ins remain actionable in the interface.
+
+Identity retains pending signup details until confirmation; the authenticated account Function
+then inserts a validated profile into Netlify Database using Drizzle. Inserting is idempotent,
+and retries do not overwrite an existing profile. `db/schema.ts` and the generated migration
+define this storage. No passwords, confirmation codes, refresh tokens or API keys are stored
+in the profile table. Roles come exclusively from administrator-controlled Identity app metadata;
+the signup event assigns PATIENT, regardless of supplied roles. Profile writes are authenticated,
+same-origin, JSON-only, validated and scoped to the current Identity ID. Responses are not cached,
+and database failures return safe, retryable messages without connection details.
+
+The Identity activation marker enables the feature at deployment; the first deployment also
+provisions the database and applies migrations. Node 22.12 or newer is required. `.npmrc` avoids
+an unrelated optional React Native peer-resolution conflict in the Drizzle beta dependency tree.
+The Netlify dev configuration explicitly selects Vite so SPA rewrites do not swallow development
+module requests. Authenticated profile reads and edits are covered; legacy appointments, records,
+doctor and admin APIs and existing MongoDB accounts were not migrated. Unconnected API routes
+return a JSON 501 rather than an HTML page or fabricated success.
+
+Validation comprised 12 focused security and account tests, a passing Functions/database type
+check, and HTTP checks through Netlify dev. Browser tests with mocked Identity responses verified
+signup, resend, confirmation-link redemption exactly once in StrictMode, portal navigation,
+session restoration, automatically confirmed signup and recovery from an unconfirmed login.
+Real inbox delivery and production persistence require the deployment; no production accounts
+were created and no build or deployment command was run.

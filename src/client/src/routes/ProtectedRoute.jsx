@@ -5,9 +5,15 @@ import { PATHS } from './paths.js';
 
 /** Blocks unauthenticated users. */
 export function RequireAuth() {
-  const { user, booting } = useAuth();
+  const { user, booting, sessionError } = useAuth();
   const location = useLocation();
   if (booting) return <Loader fullScreen label="Checking your session…" />;
+  if (sessionError) return (
+    <div className="mx-auto max-w-md p-8 text-center" role="alert">
+      <p className="text-slate-700">{sessionError}</p>
+      <button type="button" className="btn-primary mt-4" onClick={() => window.location.reload()}>Try again</button>
+    </div>
+  );
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   return <Outlet />;
 }

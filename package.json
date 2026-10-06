@@ -10,7 +10,7 @@
     "src/server"
   ],
   "engines": {
-    "node": ">=18.17.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "setup": "npm install --workspaces --include-workspace-root",
@@ -22,13 +22,23 @@
     "start": "npm start --workspace mednexus-server",
     "test:server": "npm test --workspace mednexus-server",
     "test:client": "npm test --workspace mednexus-client",
+    "test:netlify": "node --test src/server/tests/netlify-account.test.js && node --import tsx --test tests/netlify-auth.test.mjs",
+    "typecheck:netlify": "tsc -p tsconfig.netlify.json",
     "security-checklist": "npm run security-checklist --workspace mednexus-server"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@types/node": "^26.6.4",
+    "concurrently": "^9.1.2",
+    "drizzle-kit": "^1.0.0-beta.22",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@netlify/database": "^2.0.1",
+    "@netlify/functions": "^6.0.2",
+    "@netlify/identity": "^2.0.0",
     "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^1.0.0-beta.22",
     "jsonwebtoken": "^9.0.3"
   }
 }

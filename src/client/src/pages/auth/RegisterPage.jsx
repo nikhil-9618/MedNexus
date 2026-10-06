@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -9,43 +9,32 @@ import { Loader } from '../../components/common/Loader.jsx';
 const GENDERS = ['Female', 'Male', 'Other'];
 
 export default function RegisterPage() {
-  const { register, verifyOtp, resendOtp } = useAuth();
+  const { register, user, booting } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', dob: '', gender: '', password: '', confirmPassword: '',
+    name: '', email: location.state?.email || '', phone: '', dob: '', gender: '', password: '', confirmPassword: '',
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
-  // Bot traps: a hidden field and the render time. Both are discarded by the
-  // API's register handler (see src/server/controllers/auth.controller.js).
   const [honeypot, setHoneypot] = useState('');
-  const formStartedAt = useRef(Date.now());
-  // Email verification step
-  // Arriving at /verify-email (e.g. after trying to sign in to an account that
-  // was never confirmed) lands straight on the code step with the address known.
   const prefillEmail = (location.state && location.state.email) || '';
-  const [step, setStep] = useState(prefillEmail ? 'otp' : 'form');
+  const [step, setStep] = useState(location.pathname === PATHS.verifyEmail ? 'confirmation' : 'form');
   const [pendingEmail, setPendingEmail] = useState(prefillEmail);
-  const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
-  // Whether a real email was accepted for this code: true / false / null when
-  // unknown (the user came here from the login page).
-  const [delivered, setDelivered] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   function validate() {
     const errs = {};
     if (form.name.trim().length < 2) errs.name = 'Enter your full name';
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = 'Enter a valid email';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) errs.email = 'Enter a valid email';
     if (!/^[+]?[\d\s()-]{7,20}$/.test(form.phone.trim())) errs.phone = 'Enter a valid phone number';
     if (!form.dob) errs.dob = 'Select your date of birth';
     else if (new Date(form.dob) > new Date()) errs.dob = 'Date of birth cannot be in the future';
     if (!GENDERS.includes(form.gender)) errs.gender = 'Select a gender';
-    if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
-      errs.password = 'At least 8 characters with upper, lower and a number';
+    if (form.password.length < 8 || form.password.length > 72 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      errs.password = '8–72 characters with upper, lower and a number';
     }
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
     setErrors(errs);
@@ -66,26 +55,17 @@ export default function RegisterPage() {
         password: form.password,
         confirmPassword: form.confirmPassword,
         website: honeypot,
-        formStartedAt: formStartedAt.current,
       });
 
-      // The account exists but no session is opened until the emailed code
-      // is confirmed, so move the user to the verification step.
-      if (res && res.otpRequired) {
+      if (res.confirmationRequired) {
         setPendingEmail(res.email || form.email.trim().toLowerCase());
-        setDevOtp(res.devOtp || '');
-        setDelivered(Boolean(res.delivered));
-        setStep('otp');
-        toast.success(
-          res.delivered
-            ? 'Check your email for the 6-digit verification code.'
-            : 'Your account is created. No email provider is configured, so the code is shown on the next screen.'
-        );
+        setStep('confirmation');
+        toast.success('Check your email and click the confirmation link to activate your account.');
         return;
       }
 
       toast.success('Account created.');
-      navigate(homeForRole('PATIENT'), { replace: true });
+      navigate(homeForRole(res.user.role), { replace: true });
     } catch (err) {
       const fields = apiFieldErrors(err);
       if (Object.keys(fields).length) setErrors(fields);
@@ -95,31 +75,15 @@ export default function RegisterPage() {
     }
   }
 
-  async function submitOtp(e) {
-    e.preventDefault();
-    if (!/^\d{6}$/.test(otp.trim())) {
-      setErrors({ otp: 'Enter the 6-digit code from your email' });
-      return;
-    }
-    setBusy(true);
-    try {
-      const user = await verifyOtp(pendingEmail, otp.trim());
-      toast.success(`Email verified — welcome to MedNexus, ${user.name.split(' ')[0]}!`);
-      navigate(homeForRole(user.role), { replace: true });
-    } catch (err) {
-      toast.error(apiError(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function resend() {
     setBusy(true);
     try {
-      const res = await resendOtp(pendingEmail);
-      if (res && res.devOtp) setDevOtp(res.devOtp);
-      if (res && typeof res.delivered === 'boolean') setDelivered(res.delivered);
-      toast.success(res?.message || 'A new code has been sent.');
+      const result = await register({ ...form, email: pendingEmail, website: honeypot });
+      if (result.user) {
+        navigate(homeForRole(result.user.role), { replace: true });
+      } else {
+        toast.success('Check your inbox and spam folder for the confirmation link.');
+      }
     } catch (err) {
       toast.error(apiError(err));
     } finally {
@@ -127,64 +91,35 @@ export default function RegisterPage() {
     }
   }
 
-  /* ---- Step 2: email verification ---- */
-  if (step === 'otp') {
+  if (step === 'confirmation') {
     return (
       <div>
         <h1 className="font-display text-2xl font-extrabold text-slate-900">Verify your email</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          {delivered === true
-            ? 'We emailed a 6-digit code to'
-            : 'Enter the 6-digit verification code for'}{' '}
-          <span className="font-semibold text-slate-700">{pendingEmail}</span>
-          {delivered === true ? '. ' : ' below to activate your account. '}
-          This step is required once, before you can sign in.
+          Open the confirmation email{pendingEmail ? <> sent to <span className="font-semibold text-slate-700">{pendingEmail}</span></> : ''} and click its link.
+          {' '}The link brings you back here and signs you in securely. Check your spam folder if it is missing.
         </p>
 
-        <form onSubmit={submitOtp} className="mt-7 space-y-4" noValidate>
-          <div>
-            <label className="label" htmlFor="otp">Verification code</label>
-            <input
-              id="otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              className={`input text-center font-mono text-lg tracking-[0.5em] ${errors.otp ? 'ring-rose-400' : ''}`}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              aria-invalid={!!errors.otp}
-            />
-            {errors.otp && <p className="mt-1 text-xs text-rose-600">{errors.otp}</p>}
-          </div>
-
-          <button type="submit" className="btn-primary w-full py-3" disabled={busy}>
-            {busy ? <Loader label="Verifying…" /> : 'Verify & continue'}
-          </button>
-        </form>
-
-        {devOtp && (
-          <div className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800 ring-1 ring-amber-200">
-            <span className="font-bold">Development mode:</span> this code is exposed because the
-            server is not delivering mail — it is shown here and written to the server log —{' '}
-            <span className="font-mono font-bold">{devOtp}</span>
-          </div>
-        )}
-
-        <div className="mt-5 flex items-center justify-between text-sm">            <button
+        <Link to={user ? homeForRole(user.role) : PATHS.login} className="btn-primary mt-7 w-full py-3">
+          {user ? 'Continue to your account' : 'Back to sign in'}
+        </Link>
+        <div className="mt-5 flex items-center justify-between text-sm">
+          {form.password ? <button
               type="button"
               onClick={resend}
-              disabled={busy}
+              disabled={busy || booting}
               className="font-semibold text-brand-700 hover:underline disabled:opacity-50"
             >
-              Resend code
-            </button>
+              {busy ? 'Sending…' : 'Resend confirmation link'}
+            </button> : <Link to={PATHS.register} state={{ email: pendingEmail }} className="font-semibold text-brand-700 hover:underline">
+              Register again to resend
+            </Link>}
           <button
             type="button"
-            onClick={() => { setStep('form'); setOtp(''); setErrors({}); setDevOtp(''); setDelivered(null); }}
+            onClick={() => { setStep('form'); setErrors({}); }}
             className="text-slate-500 hover:underline"
           >
-            Use a different email
+            Change email
           </button>
         </div>
       </div>
@@ -256,7 +191,7 @@ export default function RegisterPage() {
         <p className="text-xs leading-5 text-slate-500">
           Password must be 8+ characters with uppercase, lowercase and a number.
         </p>
-        <button type="submit" className="btn-primary w-full py-3" disabled={busy}>
+        <button type="submit" className="btn-primary w-full py-3" disabled={busy || booting}>
           {busy ? 'Creating account…' : 'Create account'}
         </button>
       </form>
