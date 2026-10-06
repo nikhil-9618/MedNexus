@@ -2,22 +2,21 @@
 # Fill in with your organizer-assigned details (exactly 2 or 4 members).
 
 team:
-  id: ""            # Organizer-assigned Team ID
-  name: "MedNexus"  # Team name
-  size: 2           # Exactly 2 or 4
+  id: "60"           
+  name: "Sarle Bro Pvt Ltd"  # Team name
+  size: 4           # Exactly 2 or 4
   repository: ""    # Your team's GitHub repository URL
 
 members:
-  - name: ""        # Member 1 full name
-    email: ""
-    role: "participant"
-  - name: ""        # Member 2 full name
-    email: ""
-    role: "participant"
-  # If team size is 4, add:
-  # - name: ""
-  #   email: ""
-  #   role: "participant"
-  # - name: ""
-  #   email: ""
-  #   role: "participant"
+  - name: "NIKHIL"      
+    email: "24p61a6268@vbithyd.ac.in"
+    role: "Developer"
+  - name: "N Snehith "       
+    email: "nsnehithreddy@gmail.com"
+    role: "Develoloper"
+    name: "Shaik Shaheerah"
+    email: "25p65a6209@vbithyd.ac.in"
+    role: "Designing"
+    name: "Nandini"
+    email: "24p61a6293@vbithyd.ac.in"
+    role: "Requirement analyst and Documentation"
